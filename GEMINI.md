@@ -97,5 +97,6 @@ def safe_move(bot, x, y, z, r):
 - `dobot_control_options_comparison.md` — canonical reference: hardware specs, all three library syntaxes, safety helpers, queue patterns, troubleshooting
 - `Syllabus-ME403-202502.md` — weekly lab schedule and course learning outcomes
 - `CLAUDE.md` — mirrors this file for Claude-based AI interactions
+- `docs/` — API reference, arc/circle math guides, safe_move pattern analysis
 - `research/` — detailed research notes (libraries, SDK options, API comparison, safety, code examples)
 - `scripts/` — runnable Python scripts; start with `01_find_port.py`

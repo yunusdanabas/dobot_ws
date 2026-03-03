@@ -66,6 +66,7 @@ def main():
 
         print("\nSpeed demo complete.")
     finally:
+        bot.speed(SAFE_VELOCITY, SAFE_ACCELERATION)
         bot.close()
 
     # -----------------------------------------------------------------------

@@ -51,7 +51,7 @@ def main():
     #     print(f"X={x:.1f}  Y={y:.1f}  Z={z:.1f}  R={r:.1f}")
     # finally:
     #     # Upstream Dobot class has no bot.close(); close serial explicitly.
-    #     bot.interface.serial.close()
+    #     bot.serial.close()
 
     # ===================================================================
     # TRACK C — pydobot (original)  (pip install pydobot)

@@ -12,7 +12,7 @@ Part 2 covers implementation details for TAs and anyone extending the code.
 
 - [Part 1 — Student Guide](#part-1--student-guide)
   - [Environment Setup](#environment-setup)
-  - [Script-by-Script Walkthrough](#script-by-script-walkthrough)
+  - [Script-by-Script Walkthrough](#script-by-script-walkthrough) (01–11)
   - [Common Workflows](#common-workflows)
   - [Troubleshooting](#troubleshooting)
 - [Part 2 — Implementation Details (for TAs)](#part-2--implementation-details-for-tas)
@@ -20,6 +20,7 @@ Part 2 covers implementation details for TAs and anyone extending the code.
   - [Safety System](#safety-system)
   - [Library Tracks](#library-tracks)
   - [Extending the Scripts](#extending-the-scripts)
+- [Additional References](#additional-references)
 
 ---
 
@@ -285,6 +286,84 @@ fundamental industrial robot pattern.
 
 ---
 
+### 09 — Arc Motion
+
+```bash
+python 09_arc_motion.py
+```
+
+**What it does:** Demonstrates two ways to draw curves: a single arc using
+`go_arc()`, and full circles by sampling points around the circumference.
+
+**What to expect:**
+- Demo 1: A single arc from (200,0) to (250,50) via an intermediate point
+- Demo 2: A full circle (radius 40 mm, 36 points) centered at (220, 0)
+- Demo 3: A smaller, faster circle (radius 25 mm, 24 points)
+
+**What you learn:** The `go_arc()` function takes an endpoint and a via-point
+(an intermediate waypoint **on** the arc, not the center). Sampled-point
+circles use basic trigonometry — `x = cx + r*cos(theta)` — and are the
+recommended approach for labs because they work reliably on all firmware.
+
+**Experiment:** Change the `radius` or `steps` parameter in `draw_circle()`
+to see how resolution affects smoothness.
+
+---
+
+### 10 — Circle via Queue Commands (Track B, Advanced)
+
+```bash
+export DOBOT_PYTHON_PATH=/path/to/dobot-python
+python 10_circle_queue.py
+```
+
+**What it does:** Draws circles using the Track B `Interface` library, which
+queues many small linear moves and monitors execution with
+`get_current_queue_index()` back-pressure.
+
+**Prerequisites:** Requires the `dobot-python` source checkout. Set the
+`DOBOT_PYTHON_PATH` environment variable to point to it.
+
+**What to expect:** Three circles at different resolutions (36, 72, 24
+points). The script prints queue progress while the robot draws.
+
+**What you learn:** Queue-based motion control — how industrial robots
+buffer commands ahead of execution. The back-pressure loop
+(`while current_idx < last_idx`) prevents the command queue from overflowing.
+
+---
+
+### 11 — Circle from Arc Segments
+
+```bash
+python 11_circle_arcs.py
+```
+
+**What it does:** Decomposes a full circle into N arc segments using
+`go_arc()`. Tests with 4 arcs (90 each), 8 arcs (45 each), and 12 arcs
+(30 each) so you can see the quality difference.
+
+**What to expect:**
+```
+TEST 1: 4 arcs  → noticeable angular steps at 90° intervals
+TEST 2: 8 arcs  → smooth, good balance of quality and speed
+TEST 3: 12 arcs → visually indistinguishable from a true circle
+TEST 4: smaller circle (radius 25 mm) with 8 arcs
+```
+
+**What you learn:** The via-point formula for arc decomposition:
+```
+via_angle = 2pi * (i + 0.5) / N   (midpoint of the arc)
+end_angle = 2pi * (i + 1) / N     (endpoint)
+```
+The via-point is placed **on the circle** at the midpoint angle — not at the
+center. This is the key insight for using `go_arc()` to trace arbitrary curves.
+
+**Experiment:** Change `num_arcs` in `draw_circle_arcs()` to compare 4, 6, 8,
+and 12 segments. More arcs = smoother but slower.
+
+---
+
 ## Common Workflows
 
 ### First-Time Setup (do once)
@@ -321,7 +400,7 @@ fundamental industrial robot pattern.
 | Suction not gripping | Vacuum leak or wrong end-effector | Check the suction cup seal. Ensure `EFFECTOR = "suction"` in the script. |
 | Script hangs after `move_to` | Missing `wait=True` or robot is stuck | All scripts use `wait=True` by default. If stuck, power-cycle the robot. |
 | `ModuleNotFoundError: pydobotplus` | Virtual environment not activated | Run `source .venv/bin/activate` before running scripts. |
-| Keyboard teleop keys don't work | Terminal not focused or pynput issue | Click on the terminal window. On Wayland (Linux), pynput may need X11. |
+| Keyboard teleop keys don't work | Terminal not focused or pynput issue | Click on the terminal window. On Wayland (Ubuntu 24.04), try `DISPLAY=:0 python 07_keyboard_teleop.py`, or log out and select **GNOME on X11** at the login screen. |
 
 ### Safe Bounds Reference
 
@@ -351,7 +430,19 @@ scripts/
 ├── 05_end_effectors.py   ← Suction and gripper control
 ├── 06_joint_angles.py    ← Live monitoring + optional CSV export
 ├── 07_keyboard_teleop.py ← Real-time keyboard jogging (pynput)
-└── 08_pick_and_place.py  ← Complete pick-and-place template
+├── 08_pick_and_place.py  ← Complete pick-and-place template
+├── 09_arc_motion.py      ← Arc motion + sampled circle drawing (Track A)
+├── 10_circle_queue.py    ← High-throughput circle via queue (Track B)
+└── 11_circle_arcs.py     ← Circle decomposition into N arc segments
+
+docs/                     ← API reference and circle math guides
+├── pydobotplus_api_reference.md
+├── pydobotplus_api_detailed.md
+├── safe_move_patterns.md
+├── arc_and_circles.md
+├── circle_drawing_index.md
+├── circle_drawing_math.md
+└── circle_arc_math_reference.md
 ```
 
 **Design principles:**
@@ -382,16 +473,17 @@ SAFE_ACCELERATION = 80                      # mm/s²
 # Core functions
 find_port(keyword)    → str | None     # Auto-detect serial port
 clamp(v, lo, hi)      → float          # Clamp value to [lo, hi]
-safe_move(bot, x,y,z,r) → None        # Clamp + move_to with wait=True
+safe_move(bot, x,y,z,r) → None        # Clamp + warn + move_to with wait=True
 go_home(bot)          → None           # Move to READY_POSE via safe_move
+startup_check(bot)    → None           # Check/clear alarms after connecting
 ```
 
 **How `safe_move()` works:** It clamps each axis independently to its bounds
 in `SAFE_BOUNDS`, then calls `bot.move_to(x, y, z, r, wait=True)`. This means
-a request for `(300, 200, 200, 0)` silently becomes `(280, 160, 150, 0)`.
-The clamping is intentionally silent to avoid breaking control loops, but
-`08_pick_and_place.py` demonstrates an explicit pre-check pattern (`_check()`)
-that warns the user before execution.
+a request for `(300, 200, 200, 0)` becomes `(280, 160, 150, 0)` and a
+`[safe_move] Clamped: ...` message is printed so students can see the
+adjustment. `08_pick_and_place.py` also demonstrates an explicit pre-check
+pattern (`_check()`) that warns the user before execution.
 
 **Why these bounds:** The Dobot Magician's kinematic workspace is roughly a
 320 mm radius hemisphere. The safe bounds are conservative to keep the arm away
@@ -469,6 +561,12 @@ if __name__ == "__main__":
 - **08_pick_and_place.py** — the `pick_up()` / `place_down()` functions are
   reusable primitives. A multi-object sorting task can call them in a loop
   with different coordinates.
+- **09_arc_motion.py** — students can change the radius, center coordinates,
+  and number of sampled points to explore how resolution affects circle
+  smoothness. Try adding a spiral by incrementing Z each step.
+- **11_circle_arcs.py** — experiment with 4, 6, 8, and 12 arc segments to
+  see the quality-vs-speed tradeoff. Compare the result visually with the
+  sampled-point approach in script 09.
 
 ### Conventions to follow
 
@@ -483,3 +581,10 @@ if __name__ == "__main__":
 
 *For detailed API reference, hardware specs, and advanced queue patterns, see
 [dobot_control_options_comparison.md](./dobot_control_options_comparison.md).*
+
+---
+
+## Additional References
+
+- [`docs/`](./docs/) — API reference for pydobotplus, arc/circle math guides, and safe_move pattern analysis
+- [`docs/circle_drawing_index.md`](./docs/circle_drawing_index.md) — Start here for circle drawing: links to math guides, scripts, and worked examples
