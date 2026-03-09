@@ -4,47 +4,83 @@ Arc Motion Demo (Track A: pydobotplus)
 
 Demonstrates:
 1. Basic arc motion using go_arc()
-2. Circle drawing via sampled points
+2. Circle drawing via sampled points (XY plane)
 3. Speed control for smooth arcs
+4. Circle in ZX plane (vertical arc, constant Y)
 
 Run with:
-    python scripts/09_arc_motion.py
+    python scripts/09_arc_motion.py [--no-viz]
 """
 
+import argparse
 import math
 import sys
 import time
 from pydobotplus import Dobot
-from utils import find_port, safe_move, go_home, READY_POSE
+from utils import find_port, safe_move, go_home, get_home
+from viz import RobotViz
 
-def draw_circle(bot, center_x, center_y, z, radius, steps=36):
+def draw_circle(bot, center_x, center_y, z, radius, steps=36, viz=None):
     """
-    Draw a circle by moving to sampled points.
-    
+    Draw a circle by moving to sampled points (XY plane, constant Z).
+
     Args:
         bot: Dobot instance
         center_x, center_y: Circle center in mm
         z: Fixed height (mm)
         radius: Circle radius (mm)
         steps: Number of points (36 = 10° resolution)
+        viz: Optional RobotViz instance for explicit intermediate sends
     """
     print(f"Drawing circle: center=({center_x}, {center_y}), z={z}, radius={radius}, steps={steps}")
     for i in range(steps + 1):
         angle = 2 * math.pi * i / steps
         x = center_x + radius * math.cos(angle)
         y = center_y + radius * math.sin(angle)
-        bot.move_to(x, y, z, 0, wait=True)
+        safe_move(bot, x, y, z, 0)
+        if viz is not None:
+            viz.send(x, y, z, 0)
         if i % 12 == 0:
             print(f"  [{i:3d}/{steps}] angle={angle*180/math.pi:6.1f}° pos=({x:7.1f}, {y:7.1f})")
 
 
+def draw_circle_zx(bot, center_x, center_z, y, radius, steps=36, viz=None):
+    """
+    Draw a circle in the ZX plane (constant Y).
+
+    Args:
+        bot: Dobot instance
+        center_x, center_z: Circle center in X and Z (mm)
+        y: Fixed Y position (mm)
+        radius: Circle radius (mm)
+        steps: Number of points (36 = 10° resolution)
+        viz: Optional RobotViz instance for explicit intermediate sends
+    """
+    print(f"Drawing circle (ZX): center_x={center_x}, center_z={center_z}, y={y}, radius={radius}, steps={steps}")
+    for i in range(steps + 1):
+        angle = 2 * math.pi * i / steps
+        x = center_x + radius * math.cos(angle)
+        z = center_z + radius * math.sin(angle)
+        safe_move(bot, x, y, z, 0)
+        if viz is not None:
+            viz.send(x, y, z, 0)
+        if i % 12 == 0:
+            print(f"  [{i:3d}/{steps}] angle={angle*180/math.pi:6.1f}° pos=(x={x:7.1f}, z={z:7.1f})")
+
+
 def demo_arc():
     """Simple arc motion demo."""
+    parser = argparse.ArgumentParser(description="Arc motion demo")
+    parser.add_argument("--no-viz", action="store_true", help="Disable real-time visualization")
+    args = parser.parse_args()
+
     port = find_port()
     if port is None:
         sys.exit("❌ No serial port found. Run: python scripts/01_find_port.py")
     
     bot = Dobot(port=port)
+    viz = RobotViz(enabled=not args.no_viz)
+    viz.attach(bot)
     try:
         print("✓ Connected to Dobot")
         
@@ -52,43 +88,54 @@ def demo_arc():
         bot.speed(50, 40)
         print("✓ Speed set to 50 mm/s, 40 mm/s²")
         
-        # Start from ready pose
+        # Start from home
         go_home(bot)
         time.sleep(0.3)
-        safe_move(bot, *READY_POSE)
-        print(f"✓ At ready pose: {READY_POSE}")
+        hx, hy, hz, hr = get_home()
+        safe_move(bot, hx, hy, hz, hr)
+        print(f"✓ At home: ({hx:.1f}, {hy:.1f}, {hz:.1f}, {hr:.1f})")
         time.sleep(0.5)
         
         # === Demo 1: Simple arc ===
         print("\n[Demo 1] Simple arc motion (go_arc)")
-        safe_move(bot, 200, 0, 100, 0)
-        print("  Starting at (200, 0, 100)")
+        safe_move(bot, hx, hy, hz, hr)
+        print(f"  Starting at ({hx:.1f}, {hy:.1f}, {hz:.1f})")
         time.sleep(0.3)
         
-        # Arc from (200, 0) to (250, 50) via intermediate (220, 30)
-        print("  Executing arc: endpoint=(250, 50), via-point=(220, 30)")
+        # Arc from home to (hx+50, 50) via intermediate (hx+20, 30)
+        print(f"  Executing arc: endpoint=({hx+50:.0f}, 50), via-point=({hx+20:.0f}, 30)")
         bot.go_arc(
-            x=250, y=50, z=100, r=0,
-            cir_x=220, cir_y=30, cir_z=100, cir_r=0
+            x=hx+50, y=50, z=hz, r=0,
+            cir_x=hx+20, cir_y=30, cir_z=hz, cir_r=0
         )
         time.sleep(0.5)
         print("  ✓ Arc completed")
         
         # === Demo 2: Full circle ===
         print("\n[Demo 2] Full circle (36 sampled points)")
-        safe_move(bot, 220, 0, 100, 0)
-        print("  Centering at (220, 0, 100)")
+        safe_move(bot, hx+20, hy, hz, hr)
+        print(f"  Centering at ({hx+20:.0f}, {hy:.0f}, {hz:.0f})")
         time.sleep(0.3)
         
-        draw_circle(bot, 220, 0, 100, 40, steps=36)
+        draw_circle(bot, hx+20, hy, hz, 40, steps=36, viz=viz)
         print("  ✓ Circle completed")
         time.sleep(0.5)
-        
+
         # === Demo 3: Smaller circle (faster) ===
         print("\n[Demo 3] Smaller circle with fewer steps (24 points, faster)")
         bot.speed(75, 50)  # Slightly faster
-        draw_circle(bot, 200, -60, 100, 25, steps=24)
+        draw_circle(bot, hx, hy-60, hz, 25, steps=24, viz=viz)
         print("  ✓ Smaller circle completed")
+        time.sleep(0.5)
+
+        # === Demo 4: Arc in ZX plane ===
+        print("\n[Demo 4] Circle in ZX plane (vertical arc, constant Y)")
+        bot.speed(50, 40)
+        safe_move(bot, hx+20, hy, hz, hr)
+        time.sleep(0.3)
+        # Center at (hx+20, hz), radius 25, y fixed at 0
+        draw_circle_zx(bot, hx+20, hz, hy, 25, steps=36, viz=viz)
+        print("  ✓ ZX circle completed")
         time.sleep(0.5)
         
         # Return to ready
@@ -106,6 +153,7 @@ def demo_arc():
             go_home(bot)
         except Exception:
             pass
+        viz.close()
         bot.close()
         print("✓ Connection closed")
 
