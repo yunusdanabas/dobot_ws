@@ -18,12 +18,15 @@ The **current `safe_move()` pattern (clamp + move_to with wait=True)** is approp
 ### Current Pattern
 ```python
 # scripts/utils.py
-def safe_move(bot, x: float, y: float, z: float, r: float) -> None:
+def safe_move(bot, x: float, y: float, z: float, r: float, mode=None) -> None:
     x = clamp(x, *SAFE_BOUNDS["x"])  # Independent clamping
     y = clamp(y, *SAFE_BOUNDS["y"])
     z = clamp(z, *SAFE_BOUNDS["z"])  # Only checks Z alone
     r = clamp(r, *SAFE_BOUNDS["r"])
-    bot.move_to(x, y, z, r, wait=True)
+    if mode is not None:
+        bot.move_to(x, y, z, r, wait=True, mode=mode)
+    else:
+        bot.move_to(x, y, z, r, wait=True)
 ```
 
 **Problem:** If you call `safe_move(bot, 220, -60, 10, 0)` (Z=10 mm, already at ground level), then later try `safe_move(bot, 220, -60, 10, 0)` with a gripper open (simulating a 50 mm tall object), the robot hits the table.
@@ -81,14 +84,23 @@ def pick_up(bot):
 
 ## (2) Error Handling: Silent Clamping vs. Exceptions
 
-### Current Pattern (Silent Clamping)
+### Current Pattern (Clamp + Warn)
+
+The current `utils.py` implementation already logs a warning when clamping occurs:
+
 ```python
-def safe_move(bot, x: float, y: float, z: float, r: float) -> None:
-    x = clamp(x, *SAFE_BOUNDS["x"])  # No warning, just clamps
-    y = clamp(y, *SAFE_BOUNDS["y"])
-    z = clamp(z, *SAFE_BOUNDS["z"])
-    r = clamp(r, *SAFE_BOUNDS["r"])
-    bot.move_to(x, y, z, r, wait=True)
+def safe_move(bot, x: float, y: float, z: float, r: float, mode=None) -> None:
+    cx = clamp(x, *SAFE_BOUNDS["x"])
+    cy = clamp(y, *SAFE_BOUNDS["y"])
+    cz = clamp(z, *SAFE_BOUNDS["z"])
+    cr = clamp(r, *SAFE_BOUNDS["r"])
+    if (cx, cy, cz, cr) != (x, y, z, r):
+        print(f"[safe_move] Clamped: ({x:.1f},{y:.1f},{z:.1f},{r:.1f})"
+              f" -> ({cx:.1f},{cy:.1f},{cz:.1f},{cr:.1f})")
+    if mode is not None:
+        bot.move_to(cx, cy, cz, cr, wait=True, mode=mode)
+    else:
+        bot.move_to(cx, cy, cz, cr, wait=True)
 ```
 
 **Pros:**
@@ -429,8 +441,9 @@ def pick_up(bot):
 ## Implementation Checklist
 
 - [ ] **Review your `safe_move()` in `scripts/utils.py`**
-  - [ ] Add warning on clamp (for labs 1–4)
-  - [ ] Add optional `lift` parameter (for pick-place)
+  - [x] Clamp warning already implemented (`[safe_move] Clamped: ...`)
+  - [x] Optional `mode` parameter already implemented (pass `MODE_PTP.*` enum)
+  - [ ] Add optional `lift` parameter (for advanced pick-place height validation)
   - [ ] Add optional `velocity/acceleration` override (for advanced projects)
 
 - [ ] **Check suction timing in `08_pick_and_place.py`**
@@ -453,6 +466,6 @@ def pick_up(bot):
 ## References
 
 - **Current implementation:** `scripts/utils.py`, `scripts/04_speed_control.py`, `scripts/08_pick_and_place.py`
-- **API reference:** `PYDOBOTPLUS_API_REFERENCE.md` (pydobotplus methods)
+- **API reference:** `docs/pydobotplus_api_reference.md` (pydobotplus methods)
 - **Hardware specs:** Dobot Magician datasheet (check workspace bounds, max velocities)
 - **Troubleshooting:** `GUIDE.md` section "Common Issues"

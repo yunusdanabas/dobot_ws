@@ -74,7 +74,7 @@ import math
 import sys
 import time
 
-sys.path.insert(0, "/absolute/path/to/dobot-python")
+sys.path.insert(0, "/absolute/path/to/dobot-python")  # or vendor/dobot-python if cloned there
 from lib.interface import Interface
 from utils import find_port
 

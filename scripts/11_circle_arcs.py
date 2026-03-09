@@ -18,7 +18,7 @@ import math
 import sys
 import time
 from pydobotplus import Dobot
-from utils import find_port, safe_move, go_home
+from utils import find_port, safe_move, go_home, get_home
 
 def draw_circle_arcs(bot, center_x, center_y, z, radius, num_arcs=4, rot=0):
     """
@@ -107,13 +107,14 @@ def demo():
         # Start from home
         go_home(bot)
         time.sleep(0.5)
+        hx, hy, hz, hr = get_home()
         
         # === Test 1: 4-arc circle (90° arcs) ===
         print("\n" + "─"*70)
         print("TEST 1: Minimum circle decomposition (4 arcs = quarter-circles)")
         print("─"*70)
         print("  Each arc covers 90°. Via-point at 45°, 135°, 225°, 315°")
-        draw_circle_arcs(bot, 220, 0, 100, 40, num_arcs=4)
+        draw_circle_arcs(bot, hx + 20, hy, hz, 40, num_arcs=4)
         time.sleep(0.5)
         go_home(bot)
         time.sleep(0.5)
@@ -123,7 +124,7 @@ def demo():
         print("TEST 2: Smoother circle (8 arcs = 45° each)")
         print("─"*70)
         print("  Each arc covers 45°. Via-points at 22.5°, 67.5°, 112.5°, etc.")
-        draw_circle_arcs(bot, 220, 0, 100, 40, num_arcs=8)
+        draw_circle_arcs(bot, hx + 20, hy, hz, 40, num_arcs=8)
         time.sleep(0.5)
         go_home(bot)
         time.sleep(0.5)
@@ -133,7 +134,7 @@ def demo():
         print("TEST 3: High-quality circle (12 arcs = 30° each)")
         print("─"*70)
         print("  Each arc covers 30°. Better approximation of true circle.")
-        draw_circle_arcs(bot, 220, 0, 100, 40, num_arcs=12)
+        draw_circle_arcs(bot, hx + 20, hy, hz, 40, num_arcs=12)
         time.sleep(0.5)
         go_home(bot)
         time.sleep(0.5)
@@ -143,7 +144,7 @@ def demo():
         print("TEST 4: Smaller circle (radius=25mm, 8 arcs)")
         print("─"*70)
         print("  Demonstrates that the algorithm scales with radius.")
-        draw_circle_arcs(bot, 200, -60, 100, 25, num_arcs=8)
+        draw_circle_arcs(bot, hx, hy - 60, hz, 25, num_arcs=8)
         time.sleep(0.5)
         go_home(bot)
         time.sleep(0.5)

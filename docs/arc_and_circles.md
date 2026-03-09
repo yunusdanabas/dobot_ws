@@ -138,7 +138,7 @@ import math
 import sys
 import time
 
-sys.path.insert(0, "/path/to/dobot-python")
+sys.path.insert(0, "/path/to/dobot-python")  # or vendor/dobot-python if cloned there
 from lib.interface import Interface
 from utils import find_port
 
@@ -291,7 +291,8 @@ finally:
 
 ```bash
 cd /home/yunusdanabas/dobot_ws
-source .venv/bin/activate
+mamba activate dobot
+# or: source .venv/bin/activate
 python scripts/09_arc_motion.py
 ```
 
@@ -302,10 +303,11 @@ Demos:
 
 ### Track B (dobot-python) — For Queue Studies
 
+If `vendor/dobot-python` exists, the script finds it automatically:
 ```bash
-export DOBOT_PYTHON_PATH=/path/to/dobot-python
 python scripts/10_circle_queue.py
 ```
+Otherwise: `export DOBOT_PYTHON_PATH=/path/to/dobot-python`
 
 Demos:
 1. Medium-resolution circle (36 points)

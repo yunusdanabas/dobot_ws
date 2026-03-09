@@ -55,11 +55,12 @@ bot.go_arc(x=end_x, y=end_y, z=z, r=rot,
 
 **Example:**
 ```python
+from utils import safe_move
 for i in range(36):
     angle = 2π·i / 36
     x = cx + r·cos(angle)
     y = cy + r·sin(angle)
-    bot.move_to(x, y, z, rot, wait=True)
+    safe_move(bot, x, y, z, rot)   # use safe_move, not bare bot.move_to()
 ```
 
 **Script:** [`scripts/09_arc_motion.py`](../scripts/09_arc_motion.py)
@@ -151,7 +152,8 @@ See [`circle_arc_math_reference.md`](circle_arc_math_reference.md) for full deta
 
 ```bash
 cd /home/yunusdanabas/dobot_ws
-source .venv/bin/activate
+mamba activate dobot
+# or: source .venv/bin/activate
 python scripts/09_arc_motion.py
 ```
 
@@ -178,10 +180,11 @@ Demonstrates:
 
 ### Test 3: Track B High-Throughput (Advanced)
 
+If `vendor/dobot-python` exists (see [GUIDE.md](../GUIDE.md) Environment Setup), no env var needed:
 ```bash
-export DOBOT_PYTHON_PATH=/path/to/dobot-python
 python scripts/10_circle_queue.py
 ```
+Otherwise: `export DOBOT_PYTHON_PATH=/path/to/dobot-python`
 
 Demonstrates:
 - Queue-based command execution
@@ -246,5 +249,5 @@ Demonstrates:
 
 ---
 
-**Last Updated:** 2026-03-04  
-**Files:** circle_drawing_index.md, circle_drawing_math.md, circle_arc_math_reference.md, scripts/11_circle_arcs.py
+**Last Updated:** 2026-03-08
+**Files:** circle_drawing_index.md, circle_drawing_math.md, circle_arc_math_reference.md, scripts/11_circle_arcs.py, scripts/09_arc_motion.py

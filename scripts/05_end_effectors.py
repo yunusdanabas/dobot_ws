@@ -37,7 +37,7 @@ def main():
             print("Suction ON  (picking up) ...")
             bot.suck(True)
             suction_on = True
-            time.sleep(2.0)          # hold for 2 s
+            time.sleep(5.0)          # hold for 2 s
 
             print("Suction OFF (releasing) ...")
             bot.suck(False)

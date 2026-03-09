@@ -7,13 +7,15 @@ ascend, traverse, descend, release, ascend.
 Edit PICK and PLACE constants to match your physical setup.
 
 Usage:
-    python 08_pick_and_place.py
+    python 08_pick_and_place.py [--no-viz]
 """
 
+import argparse
 import sys
 import time
 from pydobotplus import Dobot
 from utils import find_port, safe_move, go_home, SAFE_BOUNDS
+from viz import RobotViz
 
 # ---------------------------------------------------------------------------
 # User configuration — set these to match your table layout (mm)
@@ -41,7 +43,17 @@ def _check(label, x, y, z):
 # Motion primitives
 # ---------------------------------------------------------------------------
 def pick_up(bot):
-    """Approach from above, pick with suction, retract."""
+    """Approach from above, pick with suction, retract.
+
+    Simpler alternative — let the firmware handle the lift automatically:
+        from pydobotplus import MODE_PTP
+        bot._set_ptp_jump_params(jump=30, limit=120)  # once at startup
+        bot.move_to(PICK_X,  PICK_Y,  PICK_Z,  R, mode=MODE_PTP.JUMP_XYZ)
+        bot.suck(True)
+        bot.move_to(PLACE_X, PLACE_Y, PLACE_Z, R, mode=MODE_PTP.JUMP_XYZ)
+        bot.suck(False)
+    See scripts/12_motion_modes.py for a live demo.
+    """
     print("  Approach pick ...")
     safe_move(bot, PICK_X, PICK_Y, PICK_Z + LIFT, R)
 
@@ -76,11 +88,17 @@ def place_down(bot):
 # Main sequence
 # ---------------------------------------------------------------------------
 def main():
+    parser = argparse.ArgumentParser(description="Pick-and-place template")
+    parser.add_argument("--no-viz", action="store_true", help="Disable real-time visualization")
+    args = parser.parse_args()
+
     PORT = find_port()
     if PORT is None:
         sys.exit("[Error] No serial port found. Run 01_find_port.py first.")
 
     bot = Dobot(port=PORT)
+    viz = RobotViz(enabled=not args.no_viz)
+    viz.attach(bot)
     print(f"Connected on {PORT}\n")
 
     try:
@@ -109,6 +127,7 @@ def main():
             bot.suck(False)
         except Exception:
             pass
+        viz.close()
         bot.close()
 
 

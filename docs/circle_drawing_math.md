@@ -294,7 +294,8 @@ if __name__ == "__main__":
 
 ```bash
 cd /home/yunusdanabas/dobot_ws
-source .venv/bin/activate
+mamba activate dobot
+# or: source .venv/bin/activate
 
 # Run the demo with 4, 8, and 8 arc tests
 python scripts/circle_arc_demo.py

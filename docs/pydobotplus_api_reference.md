@@ -342,9 +342,9 @@ from pydobot import Dobot      # Track C (legacy reference)
 
 ### For Track B (source checkout)
 ```bash
-cd /path/for/vendor-code
-git clone https://github.com/AlexGustafsson/dobot-python.git
-# Add to sys.path in your scripts
+cd dobot_ws
+git clone https://github.com/AlexGustafsson/dobot-python.git vendor/dobot-python
+# Script 10 finds it automatically; or set DOBOT_PYTHON_PATH
 ```
 
 ---

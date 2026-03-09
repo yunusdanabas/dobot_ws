@@ -41,7 +41,7 @@ else:
 
 try:
     from lib.interface import Interface
-    from utils import find_port
+    from utils import find_port, get_home
 except ImportError as e:
     sys.exit(f"❌ Import error: {e}\nEnsure DOBOT_PYTHON_PATH is set correctly.")
 
@@ -107,30 +107,31 @@ def demo_circles():
     bot = Interface(port)
     try:
         print("✓ Connected to Dobot (Track B)")
+        hx, hy, hz, hr = get_home()
         
         # Move to start position
-        print("\nMoving to start position (220, 0, 100)...")
-        bot.set_point_to_point_command(3, 220, 0, 100, 0, queue=True)
+        print(f"\nMoving to start position ({hx:.0f}, {hy:.0f}, {hz:.0f})...")
+        bot.set_point_to_point_command(3, hx, hy, hz, hr, queue=True)
         time.sleep(1.5)
         
         # === Circle 1: Medium resolution ===
         print("\n[Circle 1] Medium resolution (36 points)")
-        draw_circle_queue(bot, 220, 0, 100, 40, steps=36)
+        draw_circle_queue(bot, hx + 20, hy, hz, 40, steps=36)
         time.sleep(0.5)
         
         # === Circle 2: High resolution ===
         print("\n[Circle 2] High resolution (72 points)")
-        draw_circle_queue(bot, 220, 0, 100, 40, steps=72)
+        draw_circle_queue(bot, hx + 20, hy, hz, 40, steps=72)
         time.sleep(0.5)
         
         # === Circle 3: Small & fast ===
         print("\n[Circle 3] Small circle (24 points, faster)")
-        draw_circle_queue(bot, 200, -60, 100, 25, steps=24)
+        draw_circle_queue(bot, hx, hy - 60, hz, 25, steps=24)
         time.sleep(0.5)
         
         # Return home
         print("\nReturning to start position...")
-        bot.set_point_to_point_command(3, 220, 0, 100, 0, queue=True)
+        bot.set_point_to_point_command(3, hx, hy, hz, hr, queue=True)
         time.sleep(1.0)
         
         print("\n✓ All circle demos completed successfully!")

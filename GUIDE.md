@@ -11,8 +11,9 @@ Part 2 covers implementation details for TAs and anyone extending the code.
 ## Table of Contents
 
 - [Part 1 — Student Guide](#part-1--student-guide)
+  - [Physical Setup](#physical-setup)
   - [Environment Setup](#environment-setup)
-  - [Script-by-Script Walkthrough](#script-by-script-walkthrough) (01–11)
+  - [Script-by-Script Walkthrough](#script-by-script-walkthrough) (01–17)
   - [Common Workflows](#common-workflows)
   - [Troubleshooting](#troubleshooting)
 - [Part 2 — Implementation Details (for TAs)](#part-2--implementation-details-for-tas)
@@ -26,23 +27,57 @@ Part 2 covers implementation details for TAs and anyone extending the code.
 
 # Part 1 — Student Guide
 
+## Physical Setup
+
+Before powering on the Dobot Magician:
+
+1. **Neutral posture** — set the Forearm and Rear Arm each to approximately 45° before
+   applying wall power. Powering on from an extreme position can trigger joint faults.
+2. **Wall adapter required** — USB bus power alone is not enough; always plug in the
+   dedicated wall-power adapter first.
+3. **Readiness signal** — the LED turns steady and the robot beeps once when it is ready
+   to accept commands. Three rapid beeps at startup indicate a fault — check the arm posture
+   and run `check_alarms(bot)` after connecting.
+4. **Connector map:**
+
+   | Connector | Purpose |
+   |-----------|---------|
+   | SW1 | Tool power (suction pump, laser) |
+   | GP1 / GP3 | Sensor port (IR proximity, color sensor) |
+   | SW4 | Gripper port |
+
+---
+
 ## Environment Setup
 
 Run these commands once to set up your Python environment:
 
+**Option A — mamba (recommended):**
+```bash
+cd dobot_ws
+mamba create -n dobot python=3.10 -y
+mamba activate dobot
+pip install -U pip
+pip install -r requirements.txt
+```
+
+**Option B — venv:**
 ```bash
 cd dobot_ws
 python3 -m venv .venv
 source .venv/bin/activate          # Linux / macOS
 pip install -U pip
-pip install pydobotplus pydobot pyserial pynput
+pip install -r requirements.txt
 ```
 
-**Optional Track B setup (`dobot-python`, source checkout):**
+**Optional Track B setup** (for script 10 only):
+
+Clone into `vendor/` for automatic discovery:
 ```bash
-cd /path/for/vendor-code
-git clone https://github.com/AlexGustafsson/dobot-python.git
+cd dobot_ws
+git clone https://github.com/AlexGustafsson/dobot-python.git vendor/dobot-python
 ```
+Or clone elsewhere and set `export DOBOT_PYTHON_PATH=/path/to/dobot-python`.
 
 **Linux only** — grant serial port access (then log out and back in):
 
@@ -57,11 +92,12 @@ Only one process can use the serial port at a time.
 
 ## Script-by-Script Walkthrough
 
-All scripts live in `scripts/`. Always activate your venv and `cd scripts/`
+All scripts live in `scripts/`. Always activate your environment and `cd scripts/`
 before running them.
 
 ```bash
-source .venv/bin/activate
+mamba activate dobot
+# or: source .venv/bin/activate
 cd scripts
 ```
 
@@ -234,27 +270,30 @@ MATLAB, or matplotlib to visualise joint trajectories over time.
 python 07_keyboard_teleop.py
 ```
 
-**What it does:** Lets you drive the robot in real time from the keyboard.
+**What it does:** Lets you drive the robot in real time from the keyboard using
+continuous hold-to-move: hold a direction key for smooth motion instead of
+discrete steps.
 
-| Key | Action | Step |
-|-----|--------|------|
-| Arrow Right / Left | +X / -X | 5 mm |
-| Arrow Up / Down | +Y / -Y | 5 mm |
-| Page Up / Page Down | +Z / -Z | 5 mm |
-| Q / E | +R / -R (rotation) | 5 deg |
+| Key | Action | Effect |
+|-----|--------|--------|
+| Arrow Right/Left or D/A | +X / -X | Hold to move continuously |
+| Arrow Up/Down or W/S | +Y / -Y | Hold to move continuously |
+| R / F | +Z / -Z (raise/fall) | Hold to move continuously |
+| Q / E | +R / -R (rotation) | Hold to rotate continuously |
 | Space | Toggle suction ON/OFF | — |
-| H | Go to home (READY_POSE) | — |
+| H | Go to calibrated home (or READY_POSE) | — |
 | Esc | Quit | — |
 
-**What to expect:** The robot jogs in 5 mm increments as you press keys. The
-current position is printed on a single updating line.
+**What to expect:** Hold a direction key for continuous motion. The robot moves
+smoothly at about 80 mm/s (X/Y/Z) and 45 deg/s (R). The current position is
+printed on a single updating line.
 
-**What you learn:** Incremental jogging is how real industrial robots are
-taught positions. Use this script to find pick/place coordinates for
-`08_pick_and_place.py` — note down the X, Y, Z values from the display.
+**What you learn:** Hold-to-move jogging is how many industrial teach pendants
+work. Use this script to find pick/place coordinates for `08_pick_and_place.py` —
+note down the X, Y, Z values from the display.
 
-**Tip:** You can change `STEP = 5` at the top of the script for coarser or
-finer control.
+**Tip:** Tune `JOG_VELOCITY_MM`, `JOG_VELOCITY_DEG`, `LOOP_HZ`, and `CMD_HZ` at
+the top of the script for different smoothness and responsiveness.
 
 ---
 
@@ -313,7 +352,6 @@ to see how resolution affects smoothness.
 ### 10 — Circle via Queue Commands (Track B, Advanced)
 
 ```bash
-export DOBOT_PYTHON_PATH=/path/to/dobot-python
 python 10_circle_queue.py
 ```
 
@@ -321,8 +359,9 @@ python 10_circle_queue.py
 queues many small linear moves and monitors execution with
 `get_current_queue_index()` back-pressure.
 
-**Prerequisites:** Requires the `dobot-python` source checkout. Set the
-`DOBOT_PYTHON_PATH` environment variable to point to it.
+**Prerequisites:** Requires the `dobot-python` source checkout. If cloned to
+`vendor/dobot-python` (see Environment Setup), the script finds it automatically.
+Otherwise set `export DOBOT_PYTHON_PATH=/path/to/dobot-python`.
 
 **What to expect:** Three circles at different resolutions (36, 72, 24
 points). The script prints queue progress while the robot draws.
@@ -364,11 +403,160 @@ and 12 segments. More arcs = smoother but slower.
 
 ---
 
+### 12 — Motion Modes
+
+```bash
+python 12_motion_modes.py
+```
+
+**What it does:** Traces the same 3-point path with MOVJ_XYZ (joint
+interpolation) and then MOVL_XYZ (straight-line Cartesian), then demonstrates
+JUMP_XYZ (firmware auto-lift) between two points.
+
+**What to see:** In Demo 1 the end-effector arcs through space; in Demo 2 it
+travels in straight lines between the same waypoints. Demo 3 shows the robot
+lifting automatically without any manual LIFT coordinate in the script.
+
+**What you learn:**
+- MOVJ is the default (fastest, curved path)
+- MOVL is required for drawing, writing, or surface scanning
+- JUMP is the simplest pattern for pick-and-place — the firmware handles the Z-lift
+
+**See also:** `docs/motion_modes.md` for the full MODE_PTP reference.
+
+---
+
+### 13 — Relative Moves
+
+```bash
+python 13_relative_moves.py
+```
+
+**What it does:** Demonstrates `safe_rel_move()` for incremental motion, then
+replays the pick-and-place from script 08 using relative moves instead of
+explicit absolute coordinates.
+
+**What to see:** In Demo 1, four small relative adjustments move the robot around
+a square and back. In Demo 2, the pick-and-place runs with no LIFT constant —
+only `dz=-APPROACH_HEIGHT` and `dz=+APPROACH_HEIGHT`.
+
+**What you learn:** Relative moves reduce the number of coordinate constants you
+need to compute. `safe_rel_move(bot, dz=-50)` reads as "go 50 mm down" rather
+than requiring you to know the current absolute Z.
+
+---
+
+### 14 — Sensors & I/O
+
+```bash
+python 14_sensors_io.py
+```
+
+**Before running:** Connect the IR sensor to GP1 and/or the color sensor to GP3.
+
+**What it does:** Polls the IR proximity sensor, reads the dominant color channel
+from the color sensor, toggles a digital I/O pin, then performs an
+IR-triggered pick-and-place.
+
+**What to see:**
+- Demo 1: wave your hand near the IR sensor and watch `DETECTED` appear
+- Demo 2: hold a red, green, or blue object near the color sensor to see it identified
+- Demo 4: place an object at the pick site and the robot will pick it automatically
+
+**What you learn:** How to integrate simple sensors into a reactive robot loop.
+The IR-triggered pick (Demo 4) is the pattern used in conveyor-sorting tasks.
+
+---
+
+### 15 — Pose Recorder
+
+```bash
+python 15_record_pose.py
+```
+
+**What it does:** Interactively records the robot's current Cartesian pose each
+time you press Enter, then writes all captured poses to `poses.py`.
+
+**What to see:**
+
+```
+[Pose Recorder]
+  Press Enter to record pose 1 (Ctrl+C to finish):
+  [1] x=220.3  y=-58.1  z=31.4  r=0.0   j1=22.1  j2=45.3  j3=10.2  j4=0.0  → saved
+  Press Enter to record pose 2 (Ctrl+C to finish):
+^C
+[Done] 1 pose(s) written to poses.py
+  POSE_1 = (220.3, -58.1, 31.4, 0.0)
+```
+
+**What you learn:** How to capture coordinates directly from the robot instead
+of calculating or estimating them. Paste the constants from `poses.py` directly
+into `08_pick_and_place.py`.
+
+**Workflow:** Run `07_keyboard_teleop.py` in a separate terminal to jog the
+robot to each position, then switch to this terminal and press Enter.
+
+---
+
+### 16 — Calibrate Home
+
+```bash
+python 16_calibrate_home.py
+```
+
+**What it does:** Probes each axis (X, Y, Z, R) by moving toward the physical
+limits until a LIMIT_* alarm triggers. Records the position at each limit,
+computes the workspace center as home, and saves it to
+`scripts/.dobot_calibration.json`.
+
+**When to run:** After homing, when you want a robot-specific home position
+instead of the default READY_POSE. Useful when the robot's reach differs from
+the nominal workspace (e.g. different mounting, table height).
+
+**What you learn:** How the robot discovers its own workspace bounds. After
+calibration, `go_home()` in all other scripts uses the saved home automatically.
+
+**Options:**
+- `--no-save` — Dry run: probe limits and print results without writing the file
+
+---
+
+### 17 — Live Visualizer (Standalone Demo)
+
+```bash
+python 17_visualizer.py
+```
+
+**What it does:** Opens a 2D+3D visualization window showing the robot's
+live end-effector position. Reads `get_pose()` in a loop at 2 Hz, prints the
+pose table, and forwards each reading to the visualizer via `viz.send()`.
+
+**What to see:** A red dot moves inside the yellow workspace boundary as the
+robot moves. A cyan trail accumulates showing the path history. The left pane
+is a top-down XY view; the right pane is a front XZ view (reach vs. height).
+
+**What you learn:** How `viz.py` works independently — useful as a live
+monitor while you plan motion or inspect another script's behavior. Also
+demonstrates the `RobotViz` API: `RobotViz()` → `attach(bot)` → `send()` → `close()`.
+
+**Disabling the visualizer:** Any script that imports `RobotViz` can have
+the visualizer suppressed without code changes:
+
+```bash
+DOBOT_VIZ=0 python 07_keyboard_teleop.py
+python 07_keyboard_teleop.py --no-viz
+```
+
+**Note:** Only one process can own the serial port. Close this script before
+running any other script that connects to the robot.
+
+---
+
 ## Common Workflows
 
 ### First-Time Setup (do once)
 
-1. Run environment setup commands (venv, pip install, dialout)
+1. Run environment setup commands (mamba or venv, `pip install -r requirements.txt`, dialout)
 2. Plug in USB + wall power
 3. `python 01_find_port.py` — confirm the robot is detected
 4. `python 02_first_connection.py` — confirm you can read the pose
@@ -387,6 +575,68 @@ and 12 segments. More arcs = smoother but slower.
 3. Press Ctrl+C when done
 4. Open `joint_log.csv` in your analysis tool of choice
 
+### Calibrating Workspace Home
+
+Run when the robot's reach differs from the default (e.g. different table height):
+
+1. Ensure the robot is homed (run `03_safe_move_demo.py` or `do_homing(bot)` if LIMIT alarms appear)
+2. `python 16_calibrate_home.py` — probes limits, computes center, saves to `.dobot_calibration.json`
+3. All scripts that call `go_home()` will now use the calibrated home
+
+To revert to the default READY_POSE, delete `scripts/.dobot_calibration.json`.
+
+### Real-Time Visualization
+
+The visualizer is built into scripts 07–09, 12, 13, and 17. It starts automatically when those scripts run (requires `pyqtgraph` and `PyQt5` from `requirements.txt`).
+
+To **disable** without changing the script:
+```bash
+DOBOT_VIZ=0 python 08_pick_and_place.py
+python 08_pick_and_place.py --no-viz
+```
+
+To **add to a new script** (3 lines):
+```python
+from viz import RobotViz
+viz = RobotViz(); viz.attach(bot)   # after bot = Dobot(...)
+# ... motion code unchanged ...
+viz.close()                          # in finally, before bot.close()
+```
+
+To use as a **standalone monitor** (e.g. while DobotStudio controls the robot):
+This is not possible since only one process can own the serial port. Use
+`17_visualizer.py` which connects directly and reads the pose.
+
+### Pose Recording Workflow
+
+Use this instead of writing down coordinates by hand:
+
+1. Run `python 15_record_pose.py` — connects to the robot and waits
+2. In a **second terminal**, run `python 07_keyboard_teleop.py` — jog the robot
+   to the first desired position
+3. Switch back to the first terminal and press **Enter** — pose is saved
+4. Repeat for each position, then press **Ctrl+C**
+5. `poses.py` is written in the current directory — paste the constants into
+   your pick-and-place script
+
+### Motion Mode Quick Reference
+
+| Mode | API constant | Path | When to use |
+|------|-------------|------|-------------|
+| Joint interpolation | `MODE_PTP.MOVJ_XYZ` | Curved | Default — fast transit |
+| Straight-line | `MODE_PTP.MOVL_XYZ` | Straight | Drawing, writing, scanning |
+| Auto-lift | `MODE_PTP.JUMP_XYZ` | Lift–travel–lower | Pick-and-place |
+
+```python
+from pydobotplus import MODE_PTP
+from utils import safe_move
+
+safe_move(bot, x, y, z, r, mode=MODE_PTP.MOVL_XYZ)   # straight line
+safe_move(bot, x, y, z, r, mode=MODE_PTP.JUMP_XYZ)   # auto-lift
+```
+
+See `docs/motion_modes.md` for the full 10-mode table and configuration details.
+
 ---
 
 ## Troubleshooting
@@ -396,11 +646,16 @@ and 12 segments. More arcs = smoother but slower.
 | `No serial port found` | Robot not connected or no power | Check USB cable **and** wall-power adapter. Both are required. |
 | `Permission denied: '/dev/ttyUSB0'` | Linux serial port permissions | Run `sudo usermod -a -G dialout $USER`, then **log out and back in**. |
 | `Port is busy` or connection hangs | Another process owns the port | Close DobotStudio, DobotDemo, or any other Python script using the robot. |
-| Robot makes grinding/clicking sounds | Requested position is at the edge of the workspace | Reduce your coordinates. Stay within the safe bounds (see below). |
+| Robot makes grinding/clicking sounds | Requested position is at the edge of the workspace | Use `bounds=CONSERVATIVE_BOUNDS` in `safe_move()`, or reduce coordinates. See "Avoiding limits" below. |
+| `LIMIT_AXIS*` alarms, position ~(19,0,-10) | Robot not homed after power-on | Run `do_homing(bot)` before any motion. See "Homing after power-on" below. |
 | Suction not gripping | Vacuum leak or wrong end-effector | Check the suction cup seal. Ensure `EFFECTOR = "suction"` in the script. |
 | Script hangs after `move_to` | Missing `wait=True` or robot is stuck | All scripts use `wait=True` by default. If stuck, power-cycle the robot. |
-| `ModuleNotFoundError: pydobotplus` | Virtual environment not activated | Run `source .venv/bin/activate` before running scripts. |
-| Keyboard teleop keys don't work | Terminal not focused or pynput issue | Click on the terminal window. On Wayland (Ubuntu 24.04), try `DISPLAY=:0 python 07_keyboard_teleop.py`, or log out and select **GNOME on X11** at the login screen. |
+| `ModuleNotFoundError: pydobotplus` | Virtual environment not activated | Run `mamba activate dobot` or `source .venv/bin/activate` before running scripts. |
+| `ModuleNotFoundError: PyQt5` or `pyqtgraph` | Packages not installed | Run `pip install pyqtgraph PyQt5` inside your active environment, or use `pip install -r requirements.txt`. |
+| Visualizer window doesn't open | Viz disabled or Qt import failed | Ensure you did not pass `--no-viz` or set `DOBOT_VIZ=0`. Run `python -c "import pyqtgraph, PyQt5"` to verify Qt. |
+| Keyboard teleop keys don't work | Terminal not focused | Click the terminal window so it has focus. The script reads keys directly from the terminal (works on Wayland and X11). |
+| `Position(x=..., y=..., z=..., r=...)` printed on every move | pydobotplus upstream debug print | Fixed automatically: importing `utils` patches `Dobot.move_to` to suppress the print and the unnecessary `get_pose()` call it contained. No action needed. |
+| Keyboard teleop overshoots after releasing a key | Queued commands still executing | Fixed: releasing a key now flushes the robot command queue (`stop_exec → clear → start_exec`). If you still see it, check RELEASE_THRESHOLD in the script. |
 
 ### Safe Bounds Reference
 
@@ -413,6 +668,41 @@ limits enforced by `safe_move()`:
 | Y | -160 | 160 | mm |
 | Z | 10 | 150 | mm |
 | R | -90 | 90 | degrees |
+
+### Homing after power-on (LIMIT_AXIS alarms)
+
+**Power-on position is NOT home.** The robot must be homed to establish its
+coordinate frame before motion. If you see `LIMIT_AXIS23_NEG`, `LIMIT_AXIS3_POS`,
+or similar, and the robot reports position (19, 0, -10) instead of (200, 0, 100):
+
+```python
+from utils import do_homing
+
+bot = Dobot(port=PORT)
+do_homing(bot)   # Run homing sequence (~15-30 s)
+# then run your motion script
+```
+
+`03_safe_move_demo.py` runs homing automatically when limit alarms are present
+at startup. For other scripts, call `do_homing(bot)` once after connecting.
+
+### Avoiding limits (POSE_LIMIT_OVER)
+
+If the robot hits limits (grinding, not reaching target, or `[safe_move] LIMIT:`
+warnings), use tighter bounds:
+
+```python
+from utils import safe_move, CONSERVATIVE_BOUNDS
+
+# Stay well inside reachable workspace
+safe_move(bot, x, y, z, r, bounds=CONSERVATIVE_BOUNDS)
+
+# Verify each move reached target (warns if not)
+safe_move(bot, x, y, z, r, bounds=CONSERVATIVE_BOUNDS, verify=True)
+```
+
+`CONSERVATIVE_BOUNDS` is x:(170,250), y:(-120,120), z:(30,120), r:(-60,60).
+Call `check_alarms(bot)` after connecting to clear any limit alarms before motion.
 
 ---
 
@@ -429,11 +719,18 @@ scripts/
 ├── 04_speed_control.py   ← Speed profiles + wall-clock timing
 ├── 05_end_effectors.py   ← Suction and gripper control
 ├── 06_joint_angles.py    ← Live monitoring + optional CSV export
-├── 07_keyboard_teleop.py ← Real-time keyboard jogging (pynput)
+├── 07_keyboard_teleop.py ← Real-time keyboard jogging (stdin)
 ├── 08_pick_and_place.py  ← Complete pick-and-place template
 ├── 09_arc_motion.py      ← Arc motion + sampled circle drawing (Track A)
 ├── 10_circle_queue.py    ← High-throughput circle via queue (Track B)
-└── 11_circle_arcs.py     ← Circle decomposition into N arc segments
+├── 11_circle_arcs.py     ← Circle decomposition into N arc segments
+├── 12_motion_modes.py    ← MOVJ vs MOVL vs JUMP demo
+├── 13_relative_moves.py  ← safe_rel_move() / relative pick-and-place
+├── 14_sensors_io.py      ← IR sensor, color sensor, digital I/O
+├── 15_record_pose.py     ← Interactive pose recorder → poses.py
+├── 16_calibrate_home.py  ← Probe limits, compute home, save to .dobot_calibration.json
+├── 17_visualizer.py      ← Live pose monitor + RobotViz standalone demo
+└── viz.py                ← RobotViz utility: 2D+3D visualizer (spawn subprocess, PyQt5)
 
 docs/                     ← API reference and circle math guides
 ├── pydobotplus_api_reference.md
@@ -442,7 +739,8 @@ docs/                     ← API reference and circle math guides
 ├── arc_and_circles.md
 ├── circle_drawing_index.md
 ├── circle_drawing_math.md
-└── circle_arc_math_reference.md
+├── circle_arc_math_reference.md
+└── motion_modes.md       ← MODE_PTP complete reference
 ```
 
 **Design principles:**
@@ -465,17 +763,22 @@ The safety layer lives entirely in `utils.py`:
 
 ```python
 # Constants
-READY_POSE       = (200, 0, 100, 0)       # Safe home position
-SAFE_BOUNDS      = {"x": (150, 280), "y": (-160, 160), "z": (10, 150), "r": (-90, 90)}
-SAFE_VELOCITY    = 100                      # mm/s
-SAFE_ACCELERATION = 80                      # mm/s²
+READY_POSE        = (200, 0, 100, 0)      # Safe home position
+SAFE_BOUNDS       = {"x": (150, 280), "y": (-160, 160), "z": (10, 150), "r": (-90, 90)}
+SAFE_VELOCITY     = 100                    # mm/s
+SAFE_ACCELERATION = 80                     # mm/s²
+JUMP_HEIGHT       = 30                     # mm — Z clearance for JUMP_XYZ mode
 
 # Core functions
-find_port(keyword)    → str | None     # Auto-detect serial port
-clamp(v, lo, hi)      → float          # Clamp value to [lo, hi]
-safe_move(bot, x,y,z,r) → None        # Clamp + warn + move_to with wait=True
-go_home(bot)          → None           # Move to READY_POSE via safe_move
-startup_check(bot)    → None           # Check/clear alarms after connecting
+find_port(keyword)              → str | None  # Auto-detect serial port
+clamp(v, lo, hi)                → float       # Clamp value to [lo, hi]
+safe_move(bot, x,y,z,r, mode)  → None        # Clamp + warn + move_to (optional MODE_PTP)
+safe_rel_move(bot, dx,dy,dz,dr) → None       # Relative move clamped to SAFE_BOUNDS
+go_home(bot)                    → None        # Move to calibrated home (or READY_POSE) via safe_move
+get_home()                      → (x,y,z,r)  # Return home coords without moving (cached from JSON)
+do_homing(bot)                  → None        # Run homing sequence (after power-on)
+check_alarms(bot)               → None        # Print named alarms then clear them
+startup_check(bot)              → None        # Simpler alarm check (no name printing)
 ```
 
 **How `safe_move()` works:** It clamps each axis independently to its bounds
@@ -490,6 +793,16 @@ pattern (`_check()`) that warns the user before execution.
 from singularities (X too small), the table surface (Z too low), and joint
 limits (R extremes). They can be widened by editing `SAFE_BOUNDS` in `utils.py`
 if the physical setup allows it.
+
+**pydobotplus auto-patch (`_patch_pydobotplus`):** `utils.py` applies a
+one-time monkey-patch to `pydobotplus.Dobot.move_to` at import time that fixes
+two upstream bugs: (1) an unconditional `get_pose()` call on every `move_to`
+that added ~20–50 ms of serial latency per command even when all coordinates
+were already provided, and (2) an unconditional `print(current_pose)` that
+printed `Position(x=..., y=..., z=..., r=...)` to stdout on every move.
+The patch is transparent — if `x`, `y`, `z` are all supplied it calls
+`_set_ptp_cmd` directly; otherwise it falls back to the original.  Falls back
+silently if pydobotplus internals change.
 
 ## Library Tracks
 
@@ -533,6 +846,7 @@ Usage:
 import sys, time
 from pydobotplus import Dobot
 from utils import find_port, safe_move, go_home
+from viz import RobotViz
 
 def main():
     PORT = find_port()
@@ -540,15 +854,20 @@ def main():
         sys.exit("[Error] No serial port found.")
 
     bot = Dobot(port=PORT)
+    viz = RobotViz()
+    viz.attach(bot)
     try:
         go_home(bot)
         # ... your code here ...
     finally:
+        viz.close()
         bot.close()
 
 if __name__ == "__main__":
     main()
 ```
+
+Disable the visualizer during development with `DOBOT_VIZ=0 python NN_description.py` or `python NN_description.py --no-viz`.
 
 ### Built-in extension points
 
@@ -576,6 +895,8 @@ if __name__ == "__main__":
 - Use `find_port()` for port discovery, never hardcode port strings
 - Keep the `EFFECTOR`, `PICK_X/Y/Z`, `STEP` etc. as constants at the top of
   the file so students can edit them without reading the whole script
+- Add `RobotViz` to any motion script with the 3-line pattern (`from viz import RobotViz` / `viz = RobotViz(); viz.attach(bot)` / `viz.close()` in finally before `bot.close()`)
+- Students can suppress the visualizer with `DOBOT_VIZ=0` or `--no-viz` — no code change required
 
 ---
 
@@ -586,5 +907,10 @@ if __name__ == "__main__":
 
 ## Additional References
 
-- [`docs/`](./docs/) — API reference for pydobotplus, arc/circle math guides, and safe_move pattern analysis
+- [`requirements.txt`](./requirements.txt) — pip dependencies (pydobotplus, pydobot, pyserial, pyqtgraph, PyQt5, numpy)
+- [`dobot_control_options_comparison.md`](./dobot_control_options_comparison.md) — hardware specs, library syntax, safety, motion modes
+- [`docs/`](./docs/) — API reference for pydobotplus, arc/circle math guides, safe_move pattern analysis, and motion modes reference
+- [`docs/motion_modes.md`](./docs/motion_modes.md) — Complete MODE_PTP table, MOVJ/MOVL/JUMP decision guide, JUMP configuration, alarm codes
 - [`docs/circle_drawing_index.md`](./docs/circle_drawing_index.md) — Start here for circle drawing: links to math guides, scripts, and worked examples
+- [`scripts/viz.py`](./scripts/viz.py) — `RobotViz` class: real-time 2D+3D visualizer (disable with `DOBOT_VIZ=0` or `--no-viz`)
+- [`scripts/17_visualizer.py`](./scripts/17_visualizer.py) — standalone pose monitor; demonstrates `RobotViz` without motion

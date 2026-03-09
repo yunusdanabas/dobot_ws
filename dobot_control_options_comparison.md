@@ -23,14 +23,23 @@
 | Communication | USB via CP210x (Silicon Labs), 115200 baud |
 | Power | Dedicated wall adapter required (USB bus power is insufficient) |
 
-### Safe Lab Bounds
+### Hard Limits (firmware / physical)
 
 | Axis | Min | Max | Notes |
 |---|---|---|---|
-| X | 150 mm | 280 mm | Keep away from base singularity region |
-| Y | -160 mm | 160 mm | Symmetric left/right travel |
-| Z | 10 mm | 150 mm | Keep off table surface |
-| R | -90° | 90° | Avoid cable wrap |
+| X | 115 mm | 320 mm | Base singularity below 115 mm; full reach at 320 mm |
+| Y | -160 mm | 160 mm | Arm geometry limit |
+| Z | 0 mm | 160 mm | 0 mm = table surface; firmware ceiling = 160 mm |
+| R | -135° | 135° | Servo range (cable-wrap risk past ±90°) |
+
+### Safe Bounds (SAFE_BOUNDS in utils.py — 5 mm margin from hard limits)
+
+| Axis | Min | Max | Notes |
+|---|---|---|---|
+| X | 120 mm | 315 mm | 5 mm clear of singularity / max reach |
+| Y | -158 mm | 158 mm | 2 mm margin |
+| Z | 5 mm | 155 mm | 5 mm above table, 5 mm below ceiling |
+| R | -90° | 90° | Kept at ±90° to avoid cable wrap |
 
 ### Ready Pose
 
@@ -50,25 +59,38 @@ sudo usermod -a -G dialout $USER
 
 ### Virtual environment
 
+**Option A — mamba (recommended):**
+```bash
+mamba create -n dobot python=3.10 -y
+mamba activate dobot
+pip install -U pip
+pip install -r requirements.txt
+```
+
+**Option B — venv:**
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate      # Linux/macOS
 # .venv\Scripts\activate      # Windows PowerShell
 pip install -U pip
+pip install -r requirements.txt
 ```
 
 ### Install Track A + Track C dependencies
 
 ```bash
-pip install pydobotplus pydobot pyserial pynput
+pip install pydobotplus pydobot pyserial pyqtgraph PyQt5 numpy
+# or: pip install -r requirements.txt
 ```
 
-### Track B setup (`dobot-python` source checkout)
+### Track B setup (`dobot-python` source checkout, optional for script 10)
 
+Clone into `vendor/` for automatic discovery:
 ```bash
-cd /path/for/vendor-code
-git clone https://github.com/AlexGustafsson/dobot-python.git
+cd dobot_ws
+git clone https://github.com/AlexGustafsson/dobot-python.git vendor/dobot-python
 ```
+Or clone elsewhere and set `DOBOT_PYTHON_PATH=/path/to/dobot-python`.
 
 | Track | Library | Status in this workspace |
 |---|---|---|
@@ -155,21 +177,32 @@ finally:
 ### Safety helpers (`scripts/utils.py`)
 
 ```python
-SAFE_BOUNDS = {"x": (150, 280), "y": (-160, 160), "z": (10, 150), "r": (-90, 90)}
-READY_POSE = (200, 0, 100, 0)
+SAFE_BOUNDS  = {"x": (120, 315), "y": (-158, 158), "z": (5, 155), "r": (-90, 90)}
+READY_POSE   = (200, 0, 100, 0)
+JUMP_HEIGHT  = 30   # mm — Z clearance for JUMP_XYZ mode
 
 def clamp(v, lo, hi):
     return max(lo, min(hi, v))
 
-def safe_move(bot, x, y, z, r):
+def safe_move(bot, x, y, z, r, mode=None):
     x = clamp(x, *SAFE_BOUNDS["x"])
     y = clamp(y, *SAFE_BOUNDS["y"])
     z = clamp(z, *SAFE_BOUNDS["z"])
     r = clamp(r, *SAFE_BOUNDS["r"])
-    bot.move_to(x, y, z, r, wait=True)
+    if mode is not None:
+        bot.move_to(x, y, z, r, wait=True, mode=mode)
+    else:
+        bot.move_to(x, y, z, r, wait=True)
+
+def safe_rel_move(bot, dx=0, dy=0, dz=0, dr=0):
+    """Relative move clamped to SAFE_BOUNDS."""
+    x, y, z, r, *_ = unpack_pose(bot.get_pose())
+    safe_move(bot, x + dx, y + dy, z + dz, r + dr)
 ```
 
-Use small deltas (5-10 mm) when testing unknown trajectories.
+Use small deltas (5–10 mm) when testing unknown trajectories.
+Pass `mode=MODE_PTP.MOVL_XYZ` for straight-line paths or `mode=MODE_PTP.JUMP_XYZ` for auto-lift.
+See `docs/motion_modes.md` for the full MODE_PTP reference.
 
 ---
 
@@ -251,7 +284,7 @@ See `scripts/07_keyboard_teleop.py`.
 |---|---|---|
 | Right / Left | +X / -X | STEP mm |
 | Up / Down | +Y / -Y | STEP mm |
-| Page Up / Page Down | +Z / -Z | STEP mm |
+| R / F | +Z / -Z | STEP mm |
 | Q / E | +R / -R | STEP deg |
 | Space | Toggle suction | — |
 | H | Go to `READY_POSE` | — |
@@ -324,7 +357,84 @@ Back-pressure rule: do not queue far ahead without monitoring `get_current_queue
 
 ---
 
-## §11 Troubleshooting
+## §11 Motion Modes
+
+### MODE_PTP Enum
+
+```python
+from pydobotplus import MODE_PTP
+```
+
+| Value | Name | Path | Use case |
+|-------|------|------|----------|
+| 0 | JUMP_XYZ | Lift → Travel → Lower | Pick-and-place; firmware handles Z-lift |
+| 1 | MOVJ_XYZ | Joint interpolation | Fast transit; default in pydobotplus |
+| 2 | MOVL_XYZ | Straight-line Cartesian | Drawing, writing, surface scanning |
+| 3 | MOVR_XYZ | Relative Cartesian linear | Incremental absolute moves |
+| 4 | MOVJ_ANGLE | Joint-space by angle | Teaching/replay from joint angles |
+| 5 | MOVR_ANGLE | Relative joint-space | Fine joint adjustments |
+| 6 | MOVJ_INC | Joint incremental | Small joint nudges |
+| 7 | MOVL_INC | Linear incremental | Small Cartesian nudges |
+| 8 | MOVJ_XYZ_INC | Joint incremental (Cartesian input) | — |
+| 9 | JUMP_MOVL_XYZ | Lift → Straight-line → Lower | Precision pick-and-place |
+
+### When to Use Each Mode
+
+**MOVJ_XYZ** — use for fast transit between points when the end-effector path shape
+does not matter. Joint interpolation curves through space. This is the default in
+pydobotplus (Track A) and ZdenekM/pydobot.
+
+**MOVL_XYZ** — use when the end-effector must travel in a straight Cartesian line:
+drawing, writing, cutting, or scanning. This is the **default in luismesas/pydobot
+(Track C)**, so Track A and Track C produce different paths with identical coordinates
+unless mode is set explicitly.
+
+**JUMP_XYZ** — use for pick-and-place. Configure clearance once; firmware handles
+the Z-lift automatically. Eliminates the manual LIFT constant and reduces code length.
+
+### Code Snippets
+
+```python
+from pydobotplus import MODE_PTP
+from utils import safe_move, JUMP_HEIGHT
+
+# Straight-line path (required for drawing)
+safe_move(bot, 220, 0, 80, 0, mode=MODE_PTP.MOVL_XYZ)
+
+# Firmware auto-lift (simplest pick-and-place)
+bot._set_ptp_jump_params(jump=JUMP_HEIGHT, limit=120)  # configure once
+safe_move(bot, PICK_X,  PICK_Y,  PICK_Z,  0, mode=MODE_PTP.JUMP_XYZ)
+bot.suck(True)
+safe_move(bot, PLACE_X, PLACE_Y, PLACE_Z, 0, mode=MODE_PTP.JUMP_XYZ)
+bot.suck(False)
+```
+
+### Default Mode Difference Between Libraries
+
+| Library | Default PTP mode |
+|---------|-----------------|
+| pydobotplus (Track A) | MOVJ_XYZ (curved) |
+| ZdenekM/pydobot | MOVJ_XYZ (curved) |
+| luismesas/pydobot (Track C) | MOVL_XYZ (straight) |
+
+### Alarm Enum Overview
+
+pydobotplus exposes ~80 named alarm codes. Use `check_alarms(bot)` from `utils.py`
+after connecting to print and clear active alarms by name. Common student-facing codes:
+
+| Code name | Likely cause |
+|-----------|-------------|
+| `JOINT1_FOLLOWING_ERROR` | J1 skipped steps (move too fast or overloaded) |
+| `JOINT2_FOLLOWING_ERROR` | Same for J2 |
+| `OVER_SPEED_JOINT` | Commanded velocity exceeds joint limit |
+| `POSE_LIMIT_OVER` | Target pose outside firmware workspace |
+| `MOTOR_HOT` | Overheating from sustained high load |
+
+See `docs/motion_modes.md` for the full reference.
+
+---
+
+## §12 Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---|---|---|

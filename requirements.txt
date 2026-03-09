@@ -1,0 +1,6 @@
+pydobotplus
+pydobot
+pyserial
+PyQt5
+pyqtgraph>=0.13
+numpy
