@@ -120,7 +120,7 @@ view.addItem(scatter)
 
 # Update loop (from robot data)
 def update_3d():
-    pose = robot.get_pose()
+    pose = unpack_pose(robot.get_pose())
     trajectory.setData(pos=trajectory_points)
     scatter.setData(pos=np.array([pose[:3]]))
 ```
@@ -230,13 +230,13 @@ from PyQt5.QtWidgets import QApplication
 
 def robot_control_process(pose_queue, command_queue):
     """Runs in separate process"""
-    from scripts.utils import find_port
+    from scripts.utils import find_port, unpack_pose
     from pydobotplus import Dobot
     
-    robot = Dobot(port=find_port(), verbose=False)
+    robot = Dobot(port=find_port())
     
     while True:
-        pose = robot.get_pose()
+        pose = unpack_pose(robot.get_pose())
         pose_queue.put(pose)
         
         # Check for commands
@@ -316,15 +316,15 @@ if __name__ == '__main__':
 ```python
 # From ME403 documentation
 SAFE_BOUNDS = {
-    "x": (150, 280),    # mm, workspace depth
-    "y": (-160, 160),   # mm, left-right
-    "z": (10, 150),     # mm, height above base
+    "x": (120, 315),    # mm, workspace depth
+    "y": (-158, 158),   # mm, left-right
+    "z": (5, 155),      # mm, height above base
     "r": (-90, 90)      # degrees, rotation
 }
 
 # Derived center and size for GLBoxItem
-workspace_center = ((150+280)/2, 0, (10+150)/2)  # (215, 0, 80)
-workspace_size = (280-150, 320, 150-10)           # (130, 320, 140)
+workspace_center = ((120+315)/2, 0, (5+155)/2)   # (217.5, 0, 80)
+workspace_size = (315-120, 316, 155-5)           # (195, 316, 150)
 ```
 
 ### 3D Visualization Code
@@ -398,11 +398,12 @@ class RobotWorker(QThread):
     def run(self):
         try:
             from pydobotplus import Dobot
-            self.robot = Dobot(port=self.port, verbose=False)
-            self.robot.wait_for_home()
+            from utils import unpack_pose
+
+            self.robot = Dobot(port=self.port)
             
             while self.running:
-                pose = self.robot.get_pose()
+                pose = unpack_pose(self.robot.get_pose())
                 self.pose_updated.emit(pose)
                 time.sleep(0.05)  # 20 Hz
         except Exception as e:
@@ -432,12 +433,12 @@ class RealTimeViz2D(QMainWindow):
         self.plot_widget.setAspectLocked(True)
         
         # Workspace bounds reference
-        self.plot_widget.setXRange(140, 290)
-        self.plot_widget.setYRange(-170, 170)
+        self.plot_widget.setXRange(90, 345)
+        self.plot_widget.setYRange(-180, 180)
         
         # Add workspace box region
         workspace_region = pg.LinearRegionItem(
-            values=[150, 280],
+            values=[120, 315],
             orientation='vertical',
             brush=pg.mkBrush(255, 0, 0, 30),
             movable=False
@@ -465,7 +466,7 @@ class RealTimeViz2D(QMainWindow):
     
     def on_pose_update(self, pose):
         """Called when robot sends new pose"""
-        x, y, z, r = pose
+        x, y, z, r, *_ = pose
         self.trajectory.append((x, y))
         
         if len(self.trajectory) > self.max_history:
@@ -532,11 +533,12 @@ class RobotWorker(QThread):
     def run(self):
         try:
             from pydobotplus import Dobot
-            self.robot = Dobot(port=self.port, verbose=False)
-            self.robot.wait_for_home()
+            from utils import unpack_pose
+
+            self.robot = Dobot(port=self.port)
             
             while self.running:
-                pose = self.robot.get_pose()
+                pose = unpack_pose(self.robot.get_pose())
                 self.pose_updated.emit(pose)
                 time.sleep(0.05)  # 20 Hz
         except Exception as e:
@@ -689,13 +691,12 @@ def robot_control_process(pose_queue, stop_event):
     """Runs robot control in separate process"""
     try:
         from pydobotplus import Dobot
-        from utils import find_port
+        from utils import find_port, unpack_pose
         
-        robot = Dobot(port=find_port(), verbose=False)
-        robot.wait_for_home()
+        robot = Dobot(port=find_port())
         
         while not stop_event.is_set():
-            pose = robot.get_pose()
+            pose = unpack_pose(robot.get_pose())
             try:
                 pose_queue.put(pose, timeout=1)
             except:
@@ -839,7 +840,7 @@ class RobotWorker(QThread):
     
     def run(self):
         while self.running:
-            pose = self.robot.get_pose()
+            pose = unpack_pose(self.robot.get_pose())
             self.pose_updated.emit(pose)
             time.sleep(0.05)  # 20 Hz: adjust 0.033 (30 Hz) to 0.1 (10 Hz)
 ```

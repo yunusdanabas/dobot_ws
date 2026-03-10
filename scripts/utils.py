@@ -5,7 +5,7 @@ Import in any script:
     from utils import (
         clamp, safe_move, safe_rel_move, go_home, get_home, do_homing, unpack_pose,
         startup_check, check_alarms, CALIBRATION_FILE,
-        READY_POSE, SAFE_BOUNDS, CONSERVATIVE_BOUNDS, JUMP_HEIGHT, find_port
+        READY_POSE, HARD_LIMITS, SAFE_BOUNDS, CONSERVATIVE_BOUNDS, JUMP_HEIGHT, find_port
     )
 
 This module also applies _patch_pydobotplus() at import time, which fixes two

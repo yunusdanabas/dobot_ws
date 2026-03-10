@@ -321,15 +321,15 @@ scatter = GLScatterPlotItem(pos=np.array([[x, y, z]]), color=(0, 1, 0, 1), size=
 ```python
 # From utils.py
 SAFE_BOUNDS = {
-    "x": (150, 280),    # mm, depth (workspace volume X)
-    "y": (-160, 160),   # mm, width (workspace volume Y)
-    "z": (10, 150),     # mm, height (workspace volume Z)
+    "x": (120, 315),    # mm, depth (workspace volume X)
+    "y": (-158, 158),   # mm, width (workspace volume Y)
+    "z": (5, 155),      # mm, height (workspace volume Z)
     "r": (-90, 90)      # degrees, wrist rotation
 }
 
 # Derived properties
-workspace_center = ((150+280)/2, 0, (10+150)/2)  # (215, 0, 80)
-workspace_size = (130, 320, 140)                  # Extent in X, Y, Z
+workspace_center = ((120+315)/2, 0, (5+155)/2)   # (217.5, 0, 80)
+workspace_size = (195, 316, 150)                 # Extent in X, Y, Z
 ```
 
 ### Implementation (GLBoxItem)
@@ -514,12 +514,11 @@ python scripts/viz_threading_comparison.py multiprocess
 
 2. **For real-time visualization during labs:**
    ```bash
-   # In one terminal: launch visualization
-   python scripts/viz_2d_realtime.py
-   
-   # In separate terminal: run control scripts
+   # Integrated motion + visualization in one process
    python scripts/08_pick_and_place.py
-   # (Both share serial port via proper cleanup)
+
+   # Standalone visualization example (owns the serial port by itself)
+   python scripts/viz_2d_realtime.py
    ```
 
 3. **For trajectory analysis:**
@@ -528,6 +527,9 @@ python scripts/viz_threading_comparison.py multiprocess
    python scripts/viz_3d_multiprocess.py
    # Clean, isolated I/O → reliable visualization
    ```
+
+Do not run the standalone pyqtgraph examples and a control script at the same
+time. They are single-owner tools and need exclusive access to the serial port.
 
 ### Best Practices
 

@@ -9,45 +9,12 @@ Install: pip install PyQt5 pyqtgraph numpy
 """
 
 import sys
-import time
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
-from PyQt5.QtCore import QThread, pyqtSignal
 import pyqtgraph as pg
-import numpy as np
 
-from utils import find_port
-
-class RobotWorker(QThread):
-    """Background thread for robot control"""
-    pose_updated = pyqtSignal(tuple)
-    error_occurred = pyqtSignal(str)
-    
-    def __init__(self, port):
-        super().__init__()
-        self.running = True
-        self.port = port
-        self.robot = None
-    
-    def run(self):
-        try:
-            from pydobotplus import Dobot
-            self.robot = Dobot(port=self.port, verbose=False)
-            self.robot.wait_for_home()
-            
-            while self.running:
-                pose = self.robot.get_pose()
-                self.pose_updated.emit(pose)
-                time.sleep(0.05)  # 20 Hz
-        except Exception as e:
-            self.error_occurred.emit(str(e))
-    
-    def stop(self):
-        self.running = False
-        if self.robot:
-            try:
-                self.robot.close()
-            except:
-                pass
+from pyqtgraph_helpers import PosePollingThread
+from utils import HARD_LIMITS, SAFE_BOUNDS, find_port
 
 class RealTimeViz2D(QMainWindow):
     """2D trajectory visualization window"""
@@ -64,18 +31,22 @@ class RealTimeViz2D(QMainWindow):
         self.plot_widget.setTitle('End-Effector XY Trajectory')
         self.plot_widget.setAspectLocked(True)
         
-        # Workspace bounds reference (mm)
-        self.plot_widget.setXRange(140, 290)
-        self.plot_widget.setYRange(-170, 170)
-        
-        # Add workspace region visualization
-        workspace_region_h = pg.LinearRegionItem(
-            values=[150, 280],
-            orientation='vertical',
-            brush=pg.mkBrush(255, 0, 0, 20),
-            movable=False
+        # Workspace bounds reference derived from utils.py
+        self.plot_widget.setXRange(HARD_LIMITS['x'][0] - 25, HARD_LIMITS['x'][1] + 25)
+        self.plot_widget.setYRange(HARD_LIMITS['y'][0] - 20, HARD_LIMITS['y'][1] + 20)
+
+        hard_x, hard_y = HARD_LIMITS['x'], HARD_LIMITS['y']
+        safe_x, safe_y = SAFE_BOUNDS['x'], SAFE_BOUNDS['y']
+        self.plot_widget.plot(
+            [hard_x[0], hard_x[1], hard_x[1], hard_x[0], hard_x[0]],
+            [hard_y[0], hard_y[0], hard_y[1], hard_y[1], hard_y[0]],
+            pen=pg.mkPen('w', width=1),
         )
-        self.plot_widget.addItem(workspace_region_h)
+        self.plot_widget.plot(
+            [safe_x[0], safe_x[1], safe_x[1], safe_x[0], safe_x[0]],
+            [safe_y[0], safe_y[0], safe_y[1], safe_y[1], safe_y[0]],
+            pen=pg.mkPen('y', width=1, style=Qt.DashLine),
+        )
         
         # Trajectory curve (red line)
         self.trajectory_curve = self.plot_widget.plot(
@@ -104,18 +75,17 @@ class RealTimeViz2D(QMainWindow):
         self.max_history = 1000
         
         # Status label
-        self.setStatusBar(self)
         self.statusBar().showMessage("Connecting to robot...")
         
         # Start robot thread
-        self.worker = RobotWorker(port)
+        self.worker = PosePollingThread(port)
         self.worker.pose_updated.connect(self.on_pose_update)
         self.worker.error_occurred.connect(self.on_error)
         self.worker.start()
     
     def on_pose_update(self, pose):
         """Called when robot sends new pose"""
-        x, y, z, r = pose
+        x, y, z, r, *_ = pose
         self.trajectory.append((x, y))
         
         if len(self.trajectory) > self.max_history:

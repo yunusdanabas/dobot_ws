@@ -481,9 +481,9 @@ time you press Enter, then writes all captured poses to `poses.py`.
 
 ```
 [Pose Recorder]
-  Press Enter to record pose 1 (Ctrl+C to finish):
-  [1] x=220.3  y=-58.1  z=31.4  r=0.0   j1=22.1  j2=45.3  j3=10.2  j4=0.0  → saved
-  Press Enter to record pose 2 (Ctrl+C to finish):
+  Press Enter to capture pose 1 (Ctrl+C to finish):
+  [1] x=220.3  y=-58.1  z=31.4  r=0.0   j1=22.1  j2=45.3  j3=10.2  j4=0.0  -> saved
+  Press Enter to capture pose 2 (Ctrl+C to finish):
 ^C
 [Done] 1 pose(s) written to poses.py
   POSE_1 = (220.3, -58.1, 31.4, 0.0)
@@ -493,8 +493,9 @@ time you press Enter, then writes all captured poses to `poses.py`.
 of calculating or estimating them. Paste the constants from `poses.py` directly
 into `08_pick_and_place.py`.
 
-**Workflow:** Run `07_keyboard_teleop.py` in a separate terminal to jog the
-robot to each position, then switch to this terminal and press Enter.
+**Workflow:** Position the robot using `07_keyboard_teleop.py`, DobotStudio,
+or by hand, then close that tool and press Enter here. `15_record_pose.py`
+briefly connects for each capture and releases the port again.
 
 ---
 
@@ -527,17 +528,19 @@ calibration, `go_home()` in all other scripts uses the saved home automatically.
 python 17_visualizer.py
 ```
 
-**What it does:** Opens a 2D+3D visualization window showing the robot's
-live end-effector position. Reads `get_pose()` in a loop at 2 Hz, prints the
-pose table, and forwards each reading to the visualizer via `viz.send()`.
+**What it does:** Opens the same dual-view 2D visualization used by the motion
+scripts: a top-down XY view plus a front XZ view showing the live end-effector
+position. Reads `get_pose()` in a loop at 2 Hz, prints the pose table, and
+forwards each reading to the visualizer via `viz.send()`.
 
 **What to see:** A red dot moves inside the yellow workspace boundary as the
 robot moves. A cyan trail accumulates showing the path history. The left pane
 is a top-down XY view; the right pane is a front XZ view (reach vs. height).
 
-**What you learn:** How `viz.py` works independently — useful as a live
-monitor while you plan motion or inspect another script's behavior. Also
-demonstrates the `RobotViz` API: `RobotViz()` → `attach(bot)` → `send()` → `close()`.
+**What you learn:** How `viz.py` works independently as a standalone,
+single-owner pose monitor. This script demonstrates the polled-pose path of
+the `RobotViz` API: `RobotViz()` → `send()` → `close()`. Motion scripts add
+`attach(bot)` when they want commanded moves forwarded automatically.
 
 **Disabling the visualizer:** Any script that imports `RobotViz` can have
 the visualizer suppressed without code changes:
@@ -587,7 +590,9 @@ To revert to the default READY_POSE, delete `scripts/.dobot_calibration.json`.
 
 ### Real-Time Visualization
 
-The visualizer is built into scripts 07–09, 12, 13, and 17. It starts automatically when those scripts run (requires `pyqtgraph` and `PyQt5` from `requirements.txt`).
+Integrated visualization is built into scripts 07–09, 12, and 13. Script 17
+uses the same `viz.py` window as a standalone pose monitor. All of these
+require `pyqtgraph` and `PyQt5` from `requirements.txt`.
 
 To **disable** without changing the script:
 ```bash
@@ -603,20 +608,20 @@ viz = RobotViz(); viz.attach(bot)   # after bot = Dobot(...)
 viz.close()                          # in finally, before bot.close()
 ```
 
-To use as a **standalone monitor** (e.g. while DobotStudio controls the robot):
-This is not possible since only one process can own the serial port. Use
-`17_visualizer.py` which connects directly and reads the pose.
+There is no shared-port passive monitor: only one process can own the serial
+port at a time. Use `17_visualizer.py` when pose polling and visualization are
+the only thing you want running.
 
 ### Pose Recording Workflow
 
 Use this instead of writing down coordinates by hand:
 
-1. Run `python 15_record_pose.py` — connects to the robot and waits
-2. In a **second terminal**, run `python 07_keyboard_teleop.py` — jog the robot
-   to the first desired position
-3. Switch back to the first terminal and press **Enter** — pose is saved
-4. Repeat for each position, then press **Ctrl+C**
-5. `poses.py` is written in the current directory — paste the constants into
+1. Run `python 15_record_pose.py` — it waits for Enter and only connects during each capture
+2. Position the robot using `07_keyboard_teleop.py`, DobotStudio, or by hand
+3. Close that tool so the recorder can own the serial port
+4. Press **Enter** — the current pose is saved, then the port is released again
+5. Repeat for each position, then press **Ctrl+C**
+6. `poses.py` is written in the current directory — paste the constants into
    your pick-and-place script
 
 ### Motion Mode Quick Reference
@@ -664,9 +669,9 @@ limits enforced by `safe_move()`:
 
 | Axis | Min | Max | Unit |
 |------|-----|-----|------|
-| X | 150 | 280 | mm |
-| Y | -160 | 160 | mm |
-| Z | 10 | 150 | mm |
+| X | 120 | 315 | mm |
+| Y | -158 | 158 | mm |
+| Z | 5 | 155 | mm |
 | R | -90 | 90 | degrees |
 
 ### Homing after power-on (LIMIT_AXIS alarms)
@@ -727,10 +732,11 @@ scripts/
 ├── 12_motion_modes.py    ← MOVJ vs MOVL vs JUMP demo
 ├── 13_relative_moves.py  ← safe_rel_move() / relative pick-and-place
 ├── 14_sensors_io.py      ← IR sensor, color sensor, digital I/O
-├── 15_record_pose.py     ← Interactive pose recorder → poses.py
+├── 15_record_pose.py     ← Pose recorder with reconnect-per-capture workflow
 ├── 16_calibrate_home.py  ← Probe limits, compute home, save to .dobot_calibration.json
 ├── 17_visualizer.py      ← Live pose monitor + RobotViz standalone demo
-└── viz.py                ← RobotViz utility: 2D+3D visualizer (spawn subprocess, PyQt5)
+├── pyqtgraph_helpers.py  ← Shared QThread polling helper for standalone viz examples
+└── viz.py                ← RobotViz utility: dual-view 2D visualizer (spawn subprocess, PyQt5)
 
 docs/                     ← API reference and circle math guides
 ├── pydobotplus_api_reference.md
@@ -764,7 +770,7 @@ The safety layer lives entirely in `utils.py`:
 ```python
 # Constants
 READY_POSE        = (200, 0, 100, 0)      # Safe home position
-SAFE_BOUNDS       = {"x": (150, 280), "y": (-160, 160), "z": (10, 150), "r": (-90, 90)}
+SAFE_BOUNDS       = {"x": (120, 315), "y": (-158, 158), "z": (5, 155), "r": (-90, 90)}
 SAFE_VELOCITY     = 100                    # mm/s
 SAFE_ACCELERATION = 80                     # mm/s²
 JUMP_HEIGHT       = 30                     # mm — Z clearance for JUMP_XYZ mode
@@ -783,7 +789,7 @@ startup_check(bot)              → None        # Simpler alarm check (no name p
 
 **How `safe_move()` works:** It clamps each axis independently to its bounds
 in `SAFE_BOUNDS`, then calls `bot.move_to(x, y, z, r, wait=True)`. This means
-a request for `(300, 200, 200, 0)` becomes `(280, 160, 150, 0)` and a
+a request for `(330, 200, 200, 0)` becomes `(315, 158, 155, 0)` and a
 `[safe_move] Clamped: ...` message is printed so students can see the
 adjustment. `08_pick_and_place.py` also demonstrates an explicit pre-check
 pattern (`_check()`) that warns the user before execution.
@@ -912,5 +918,5 @@ Disable the visualizer during development with `DOBOT_VIZ=0 python NN_descriptio
 - [`docs/`](./docs/) — API reference for pydobotplus, arc/circle math guides, safe_move pattern analysis, and motion modes reference
 - [`docs/motion_modes.md`](./docs/motion_modes.md) — Complete MODE_PTP table, MOVJ/MOVL/JUMP decision guide, JUMP configuration, alarm codes
 - [`docs/circle_drawing_index.md`](./docs/circle_drawing_index.md) — Start here for circle drawing: links to math guides, scripts, and worked examples
-- [`scripts/viz.py`](./scripts/viz.py) — `RobotViz` class: real-time 2D+3D visualizer (disable with `DOBOT_VIZ=0` or `--no-viz`)
+- [`scripts/viz.py`](./scripts/viz.py) — `RobotViz` class: real-time dual-view 2D visualizer (disable with `DOBOT_VIZ=0` or `--no-viz`)
 - [`scripts/17_visualizer.py`](./scripts/17_visualizer.py) — standalone pose monitor; demonstrates `RobotViz` without motion

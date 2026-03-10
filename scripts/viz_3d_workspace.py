@@ -9,48 +9,15 @@ Install: pip install PyQt5 pyqtgraph numpy
 """
 
 import sys
-import time
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
-from PyQt5.QtCore import QThread, pyqtSignal
 from pyqtgraph.opengl import (
     GLViewWidget, GLBoxItem, GLGridItem, GLLinePlotItem,
     GLScatterPlotItem, GLAxisItem
 )
 import numpy as np
 
-from utils import find_port, SAFE_BOUNDS
-
-class RobotWorker(QThread):
-    """Background thread for robot control"""
-    pose_updated = pyqtSignal(tuple)
-    error_occurred = pyqtSignal(str)
-    
-    def __init__(self, port):
-        super().__init__()
-        self.running = True
-        self.port = port
-        self.robot = None
-    
-    def run(self):
-        try:
-            from pydobotplus import Dobot
-            self.robot = Dobot(port=self.port, verbose=False)
-            self.robot.wait_for_home()
-            
-            while self.running:
-                pose = self.robot.get_pose()
-                self.pose_updated.emit(pose)
-                time.sleep(0.05)  # 20 Hz
-        except Exception as e:
-            self.error_occurred.emit(str(e))
-    
-    def stop(self):
-        self.running = False
-        if self.robot:
-            try:
-                self.robot.close()
-            except:
-                pass
+from pyqtgraph_helpers import PosePollingThread
+from utils import HARD_LIMITS, SAFE_BOUNDS, find_port
 
 class RealTimeViz3D(QMainWindow):
     """3D workspace visualization window"""
@@ -65,11 +32,10 @@ class RealTimeViz3D(QMainWindow):
         self.view.opts['distance'] = 400
         self.view.setCameraPosition(distance=400, elevation=30, azimuth=-45)
         
-        # Extract workspace bounds
-        bounds = SAFE_BOUNDS
-        x_min, x_max = bounds['x']
-        y_min, y_max = bounds['y']
-        z_min, z_max = bounds['z']
+        # Extract workspace bounds from utils.py
+        x_min, x_max = HARD_LIMITS['x']
+        y_min, y_max = HARD_LIMITS['y']
+        z_min, z_max = HARD_LIMITS['z']
         
         center_x = (x_min + x_max) / 2
         center_y = (y_min + y_max) / 2
@@ -86,6 +52,21 @@ class RealTimeViz3D(QMainWindow):
         )
         workspace_box.translate(center_x, center_y, center_z)
         self.view.addItem(workspace_box)
+
+        safe_box = GLBoxItem(
+            size=(
+                SAFE_BOUNDS['x'][1] - SAFE_BOUNDS['x'][0],
+                SAFE_BOUNDS['y'][1] - SAFE_BOUNDS['y'][0],
+                SAFE_BOUNDS['z'][1] - SAFE_BOUNDS['z'][0],
+            ),
+            color=(1, 1, 0, 0.08)
+        )
+        safe_box.translate(
+            (SAFE_BOUNDS['x'][0] + SAFE_BOUNDS['x'][1]) / 2,
+            (SAFE_BOUNDS['y'][0] + SAFE_BOUNDS['y'][1]) / 2,
+            (SAFE_BOUNDS['z'][0] + SAFE_BOUNDS['z'][1]) / 2,
+        )
+        self.view.addItem(safe_box)
         
         # Reference grid (XY plane at Z_min)
         grid = GLGridItem(
@@ -129,18 +110,17 @@ class RealTimeViz3D(QMainWindow):
         self.max_history = 500
         
         # Status label
-        self.setStatusBar(self)
         self.statusBar().showMessage("Connecting to robot...")
         
         # Start robot thread
-        self.worker = RobotWorker(port)
+        self.worker = PosePollingThread(port)
         self.worker.pose_updated.connect(self.on_pose_update)
         self.worker.error_occurred.connect(self.on_error)
         self.worker.start()
     
     def on_pose_update(self, pose):
         """Called when robot sends new pose"""
-        x, y, z, r = pose
+        x, y, z, r, *_ = pose
         point = np.array([[x, y, z]])
         
         # Add to trajectory with rolling buffer

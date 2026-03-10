@@ -15,17 +15,17 @@ This script shows architecture differences and performance tradeoffs.
 
 import sys
 import time
-import threading
 import multiprocessing as mp
+from queue import Empty, Full
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, 
-    QWidget, QPushButton, QLabel, QComboBox
+    QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
+    QWidget, QPushButton, QLabel
 )
-from PyQt5.QtCore import QThread, pyqtSignal, QTimer
+from PyQt5.QtCore import QTimer, Qt
 import pyqtgraph as pg
-import numpy as np
 
-from utils import find_port
+from pyqtgraph_helpers import PosePollingThread
+from utils import HARD_LIMITS, SAFE_BOUNDS, find_port, unpack_pose
 
 # ============================================================================
 # Pattern 1: Naive (BLOCKING) - For comparison only
@@ -48,72 +48,37 @@ class NaiveVisualization:
 # Pattern 2: QThread (Recommended)
 # ============================================================================
 
-class RobotWorkerQThread(QThread):
-    """Background thread using Qt signals - recommended for most cases"""
-    pose_updated = pyqtSignal(tuple)
-    error_occurred = pyqtSignal(str)
-    
-    def __init__(self, port):
-        super().__init__()
-        self.running = True
-        self.port = port
-        self.robot = None
-        self.iteration = 0
-    
-    def run(self):
-        try:
-            from pydobotplus import Dobot
-            self.robot = Dobot(port=self.port, verbose=False)
-            self.robot.wait_for_home()
-            
-            while self.running:
-                pose = self.robot.get_pose()
-                self.pose_updated.emit(pose)
-                self.iteration += 1
-                time.sleep(0.05)  # 20 Hz
-        except Exception as e:
-            self.error_occurred.emit(str(e))
-    
-    def stop(self):
-        self.running = False
-        if self.robot:
-            try:
-                self.robot.close()
-            except:
-                pass
-
-
 # ============================================================================
 # Pattern 3: Multiprocessing
 # ============================================================================
 
-def robot_control_process_mp(pose_queue, command_queue, stop_event):
+def robot_control_process_mp(port, pose_queue, stop_event):
     """Separate OS process for robot control"""
+    robot = None
     try:
         from pydobotplus import Dobot
-        
-        port = find_port()
-        if not port:
-            print("Robot not found")
-            return
-        
-        robot = Dobot(port=port, verbose=False)
-        robot.wait_for_home()
-        
+
+        robot = Dobot(port=port)
         iteration = 0
         while not stop_event.is_set():
             try:
-                pose = robot.get_pose()
-                pose_queue.put(pose, timeout=0.5)
+                pose_queue.put(unpack_pose(robot.get_pose()), timeout=0.2)
                 iteration += 1
-            except:
+            except Full:
                 pass
+            except Exception as exc:
+                print(f"[Process] Pose read failed: {exc}")
+                time.sleep(0.1)
             time.sleep(0.05)
-        
-        robot.close()
         print(f"[Process] Completed {iteration} iterations")
-    except Exception as e:
-        print(f"[Process] Error: {e}")
+    except Exception as exc:
+        print(f"[Process] Error: {exc}")
+    finally:
+        if robot is not None:
+            try:
+                robot.close()
+            except Exception:
+                pass
 
 
 # ============================================================================
@@ -159,8 +124,21 @@ class ThreadingComparisonWindow(QMainWindow):
         self.plot_widget.setLabel('bottom', 'X (mm)', color='white')
         self.plot_widget.setTitle(f'End-Effector Trajectory ({pattern})')
         self.plot_widget.setAspectLocked(True)
-        self.plot_widget.setXRange(140, 290)
-        self.plot_widget.setYRange(-170, 170)
+        self.plot_widget.setXRange(HARD_LIMITS['x'][0] - 25, HARD_LIMITS['x'][1] + 25)
+        self.plot_widget.setYRange(HARD_LIMITS['y'][0] - 20, HARD_LIMITS['y'][1] + 20)
+
+        hard_x, hard_y = HARD_LIMITS['x'], HARD_LIMITS['y']
+        safe_x, safe_y = SAFE_BOUNDS['x'], SAFE_BOUNDS['y']
+        self.plot_widget.plot(
+            [hard_x[0], hard_x[1], hard_x[1], hard_x[0], hard_x[0]],
+            [hard_y[0], hard_y[0], hard_y[1], hard_y[1], hard_y[0]],
+            pen=pg.mkPen('w', width=1),
+        )
+        self.plot_widget.plot(
+            [safe_x[0], safe_x[1], safe_x[1], safe_x[0], safe_x[0]],
+            [safe_y[0], safe_y[0], safe_y[1], safe_y[1], safe_y[0]],
+            pen=pg.mkPen('y', width=1, style=Qt.DashLine),
+        )
         
         self.trajectory_curve = self.plot_widget.plot(
             pen=pg.mkPen('r', width=2),
@@ -219,24 +197,24 @@ class ThreadingComparisonWindow(QMainWindow):
         if self.pattern == 'qthread':
             self._start_qthread(port)
         elif self.pattern == 'multiprocess':
-            self._start_multiprocess()
+            self._start_multiprocess(port)
         
         self.status_label.setText("Status: Running...")
     
     def _start_qthread(self, port):
         """Start QThread pattern"""
-        self.worker = RobotWorkerQThread(port)
+        self.worker = PosePollingThread(port)
         self.worker.pose_updated.connect(self.on_pose_update_qthread)
         self.worker.error_occurred.connect(self.on_error)
         self.worker.start()
     
-    def _start_multiprocess(self):
+    def _start_multiprocess(self, port):
         """Start multiprocessing pattern"""
         self.pose_queue = mp.Queue(maxsize=2)
         self.stop_event = mp.Event()
         self.process = mp.Process(
             target=robot_control_process_mp,
-            args=(self.pose_queue, None, self.stop_event),
+            args=(port, self.pose_queue, self.stop_event),
             daemon=False
         )
         self.process.start()
@@ -256,12 +234,12 @@ class ThreadingComparisonWindow(QMainWindow):
             while True:
                 pose = self.pose_queue.get_nowait()
                 self._update_visualization(pose)
-        except:
+        except Empty:
             pass
     
     def _update_visualization(self, pose):
         """Update plot with new pose"""
-        x, y, z, r = pose
+        x, y, z, r, *_ = pose
         self.trajectory.append((x, y))
         
         if len(self.trajectory) > self.max_history:
@@ -281,8 +259,9 @@ class ThreadingComparisonWindow(QMainWindow):
             self.frame_times.pop(0)
         
         dt = now - self.last_update_time
-        if dt > 0.5:
-            fps = len(self.frame_times) / (self.frame_times[-1] - self.frame_times[0])
+        if dt > 0.5 and len(self.frame_times) > 1:
+            window_s = self.frame_times[-1] - self.frame_times[0]
+            fps = len(self.frame_times) / window_s if window_s > 0 else 0.0
             self.stats_label.setText(
                 f"Updates: {self.update_count} | "
                 f"Last pose: ({x:.1f}, {y:.1f}, {z:.1f}) | "

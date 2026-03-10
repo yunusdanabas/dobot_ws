@@ -42,6 +42,7 @@ import time
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtCore import QThread, pyqtSignal
 import pyqtgraph as pg
+from utils import unpack_pose
 
 class RobotWorker(QThread):
     """Background thread for robot control"""
@@ -57,11 +58,10 @@ class RobotWorker(QThread):
         """Runs in background thread"""
         try:
             from pydobotplus import Dobot
-            self.robot = Dobot(port=self.port, verbose=False)
-            self.robot.wait_for_home()
+            self.robot = Dobot(port=self.port)
             
             while self.running:
-                pose = self.robot.get_pose()  # Blocks ~5-10 ms
+                pose = unpack_pose(self.robot.get_pose())  # Normalize Pose -> tuple
                 self.pose_updated.emit(pose)   # Thread-safe signal
                 time.sleep(0.05)               # 20 Hz sampling
         except Exception as e:
@@ -197,15 +197,14 @@ def robot_control_process(pose_queue, stop_event):
     """Runs in separate OS process"""
     try:
         from pydobotplus import Dobot
-        from utils import find_port
+        from utils import find_port, unpack_pose
         
         port = find_port()
-        robot = Dobot(port=port, verbose=False)
-        robot.wait_for_home()
+        robot = Dobot(port=port)
         
         while not stop_event.is_set():
             try:
-                pose = robot.get_pose()  # Blocks ~5-10 ms
+                pose = unpack_pose(robot.get_pose())  # Blocks ~5-10 ms
                 # Non-blocking put with timeout (avoid deadlock)
                 pose_queue.put(pose, timeout=0.5)
             except:
@@ -332,10 +331,12 @@ class RobotWorker(QThread):
     
     def run(self):
         from pydobotplus import Dobot
-        robot = Dobot(port=self.port, verbose=False)
+        from utils import unpack_pose
+
+        robot = Dobot(port=self.port)
         
         while self.running:
-            pose = robot.get_pose()
+            pose = unpack_pose(robot.get_pose())
             
             # Fast: just queue to thread pool
             # Doesn't block robot I/O thread
@@ -521,7 +522,7 @@ class RobotWorker(QThread):
     pose_updated = pyqtSignal(tuple)
     def run(self):
         while True:
-            pose = robot.get_pose()
+            pose = unpack_pose(robot.get_pose())
             self.pose_updated.emit(pose)  # Doesn't block event loop
 
 class MyWindow(QMainWindow):
@@ -568,7 +569,7 @@ def robot_process(queue):
 # CORRECT - Use timeout
 def robot_process(queue, stop_event):
     while not stop_event.is_set():
-        pose = robot.get_pose()
+        pose = unpack_pose(robot.get_pose())
         try:
             queue.put(pose, timeout=1)  # Don't block forever
         except:

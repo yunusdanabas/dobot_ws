@@ -158,7 +158,7 @@ def visualizer_process(pose_queue, stop_event, bounds):
 import multiprocessing as mp
 import time
 from pydobotplus import Dobot
-from utils import find_port, SAFE_BOUNDS
+from utils import find_port, SAFE_BOUNDS, unpack_pose
 
 def main():
     # Create queue and stop event
@@ -177,13 +177,12 @@ def main():
     try:
         # Robot control loop in main process
         port = find_port()
-        robot = Dobot(port=port, verbose=False)
-        robot.wait_for_home()
+        robot = Dobot(port=port)
         
         # Example: move and stream poses
         for i in range(10):
             robot.move_to(200 + i*5, 0, 100, 0, wait=True)
-            pose = robot.get_pose()
+            pose = unpack_pose(robot.get_pose())
             
             # Non-blocking put with timeout
             try:

@@ -34,9 +34,9 @@ def safe_move(bot, x: float, y: float, z: float, r: float, mode=None) -> None:
 ### Better Pattern: Add Lift Validation
 ```python
 SAFE_BOUNDS = {
-    "x": (150, 280),
-    "y": (-160, 160),
-    "z": (10, 150),
+    "x": (120, 315),
+    "y": (-158, 158),
+    "z": (5, 155),
     "r": (-90, 90),
 }
 

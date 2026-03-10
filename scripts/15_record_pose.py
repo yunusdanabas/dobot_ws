@@ -2,9 +2,10 @@
 """
 Pose Recorder — Interactive coordinate capture for pick-and-place setup.
 
-Move the robot to each desired position using 07_keyboard_teleop.py (in a
-separate terminal), or by hand with motors unlocked, then press Enter here
-to record the current pose.
+This recorder does not keep the serial port open while idle. Position the
+robot using another tool, close that tool, then press Enter here to capture
+the current pose. The recorder briefly connects, reads one pose, and closes
+the port again so the workflow stays compatible with single-port ownership.
 
 On Ctrl+C the recorded poses are written to poses.py in the current directory.
 
@@ -19,7 +20,7 @@ Output (poses.py):
 
 import sys
 from pydobotplus import Dobot
-from utils import find_port, go_home, unpack_pose, check_alarms
+from utils import check_alarms, find_port, unpack_pose
 
 
 def write_poses(poses: list, filename: str = "poses.py") -> None:
@@ -34,39 +35,52 @@ def write_poses(poses: list, filename: str = "poses.py") -> None:
         print(f"  POSE_{i} = ({x:.1f}, {y:.1f}, {z:.1f}, {r:.1f})")
 
 
+def capture_pose(port: str) -> tuple[float, float, float, float, float, float, float, float]:
+    """Open the robot connection briefly, read one pose, and close cleanly."""
+    bot = Dobot(port=port)
+    try:
+        check_alarms(bot)
+        return unpack_pose(bot.get_pose())
+    finally:
+        bot.close()
+
+
 def main():
     port = find_port()
     if port is None:
         sys.exit("[Error] No serial port found. Run: python scripts/01_find_port.py")
 
-    bot = Dobot(port=port)
     poses = []
+    print("\n[Pose Recorder]")
+    print("  1. Position the robot using 07_keyboard_teleop.py, DobotStudio, or by hand.")
+    print("  2. Close that tool so this recorder can own the serial port.")
+    print("  3. Press Enter here to capture the current pose.")
+    print("  Press Ctrl+C to finish and write poses.py.\n")
+
+    count = 0
     try:
-        check_alarms(bot)
-        go_home(bot)
-
-        print("\n[Pose Recorder]")
-        print("  Jog the robot to a desired position using 07_keyboard_teleop.py")
-        print("  (run in a separate terminal), then press Enter here to record.")
-        print("  Press Ctrl+C to finish and write poses.py.\n")
-
-        count = 0
         while True:
             try:
-                input(f"  Press Enter to record pose {count + 1} (Ctrl+C to finish): ")
+                input(
+                    f"  Press Enter to capture pose {count + 1} "
+                    "(Ctrl+C to finish): "
+                )
             except EOFError:
                 break
-            x, y, z, r, j1, j2, j3, j4 = unpack_pose(bot.get_pose())
+
+            try:
+                x, y, z, r, j1, j2, j3, j4 = capture_pose(port)
+            except Exception as exc:
+                print(f"  [Error] Capture failed: {exc}")
+                print("          Close any other tool using the serial port, then try again.")
+                continue
+
             count += 1
             poses.append((x, y, z, r))
             print(f"  [{count}] x={x:.1f}  y={y:.1f}  z={z:.1f}  r={r:.1f}"
-                  f"   j1={j1:.1f}  j2={j2:.1f}  j3={j3:.1f}  j4={j4:.1f}  → saved")
-
+                  f"   j1={j1:.1f}  j2={j2:.1f}  j3={j3:.1f}  j4={j4:.1f}  -> saved")
     except KeyboardInterrupt:
         print()  # newline after ^C
-    finally:
-        bot.close()
-        print("Connection closed.")
 
     if poses:
         write_poses(poses)

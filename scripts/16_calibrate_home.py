@@ -183,8 +183,7 @@ def main():
             else:
                 idx = "xyzr".index(axis)
                 home_vals.append(READY_POSE[idx])
-                def_b = {"x": (150, 280), "y": (-160, 160), "z": (10, 150), "r": (-90, 90)}[axis]
-                bounds[axis] = list(def_b)
+                bounds[axis] = list(SAFE_BOUNDS[axis])
 
         raw_home = tuple(home_vals) if len(home_vals) == 4 else READY_POSE
 

@@ -152,15 +152,15 @@ timer.start(33)  # 30 Hz polling
 ```python
 # From utils.py
 SAFE_BOUNDS = {
-    "x": (150, 280),    # mm, workspace X depth
-    "y": (-160, 160),   # mm, workspace Y (left-right)
-    "z": (10, 150),     # mm, workspace Z (height)
+    "x": (120, 315),    # mm, workspace X depth
+    "y": (-158, 158),   # mm, workspace Y (left-right)
+    "z": (5, 155),      # mm, workspace Z (height)
     "r": (-90, 90)      # degrees, wrist rotation
 }
 
 # Derived for 3D box
-workspace_center = (215, 0, 80)      # mm
-workspace_size = (130, 320, 140)    # (X, Y, Z) extent
+workspace_center = (217.5, 0, 80)    # mm
+workspace_size = (195, 316, 150)     # (X, Y, Z) extent
 ```
 
 Use these to set PlotWidget ranges or GLBoxItem positioning.
@@ -288,9 +288,8 @@ python -c "import PyQt5; import pyqtgraph; print('OK')"
 # 2. Find robot
 python scripts/01_find_port.py
 
-# 3. Test 2D visualization (no robot needed for demo)
+# 3. Test 2D visualization
 python scripts/viz_2d_realtime.py
-# (Will fail to connect but shows if Qt works)
 
 # 4. Run with robot connected
 # Ensure DobotStudio is closed
@@ -314,6 +313,9 @@ python scripts/viz_2d_realtime.py
 2. **Explore example 2** (`viz_3d_workspace.py`) for better visualization
 3. **For heavy computation**, try example 3 with multiprocessing
 4. **Extend** with your own data (forces, velocities, sensor streams)
+
+These examples are standalone visualizers. For motion + visualization in one
+process, use the built-in `scripts/viz.py` integration used by scripts 07–09 and 12–13.
 
 ---
 

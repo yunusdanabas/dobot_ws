@@ -119,12 +119,12 @@ def safe_move(bot, x, y, z, r, mode=None):
 - `docs/motion_modes.md` — complete MODE_PTP table, MOVJ/MOVL/JUMP decision guide, alarm codes
 - `research/` — detailed research notes (libraries, SDK options, API comparison, safety, code examples)
 - `scripts/` — runnable Python scripts 01–17; start with `01_find_port.py`
-- `scripts/viz.py` — `RobotViz` utility: 2D+3D real-time visualizer (subprocess, pyqtgraph/PyQt5)
-- `scripts/17_visualizer.py` — standalone pose monitor; also demonstrates `RobotViz` independently
+- `scripts/viz.py` — `RobotViz` utility: dual-view 2D real-time visualizer (subprocess, pyqtgraph/PyQt5)
+- `scripts/17_visualizer.py` — standalone pose monitor; demonstrates `RobotViz.send()` without motion commands
 
 ## Visualization Pattern
 
-Scripts 07–09, 12–13, and 17 include real-time visualization via `viz.py`.
+Scripts 07–09 and 12–13 integrate `viz.py` directly. `17_visualizer.py` uses the same window as a standalone, single-owner pose monitor.
 Add to any motion script with 3 lines:
 
 ```python
@@ -134,6 +134,8 @@ viz.attach(bot)                   # patches bot.move_to auto-captures poses
 # ... motion code unchanged ...
 viz.close()                       # in finally block, before bot.close()
 ```
+
+`RobotViz` is not a shared-port monitor. Only one process can own the robot port at a time.
 
 Disable via environment or CLI:
 ```bash

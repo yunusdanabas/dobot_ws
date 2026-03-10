@@ -1,5 +1,5 @@
 """
-17_visualizer.py — Live pose monitor with real-time 2D/3D visualization.
+17_visualizer.py — Live pose monitor with real-time dual-view 2D visualization.
 
 Connects to the robot, opens the visualizer window, then polls and prints
 the end-effector pose at 2 Hz — same table format as 06_joint_angles.py.
@@ -7,9 +7,8 @@ the end-effector pose at 2 Hz — same table format as 06_joint_angles.py.
 This script serves two purposes:
   1. Standalone demo — proves the viz window works before adding it to a
      motion script.
-  2. Live monitor — run this in one terminal while another terminal runs
-     a motion script (or DobotStudio); it shows the robot's position in
-     real time without sending any move commands.
+  2. Live monitor — own the serial port, watch the current pose, and verify
+     the visualizer path without sending any move commands.
 
 Note: Only one process can own the serial port.  Close this script before
 running another script that connects to the robot, and vice versa.
@@ -42,11 +41,11 @@ def main():
 
     bot = Dobot(port=PORT)
     viz = RobotViz(enabled=not args.no_viz)
-    viz.attach(bot)  # patches move_to; also use viz.send() for polled poses
 
     try:
         print(f"Connected on {PORT}")
-        print("Visualizer window opened. Press Ctrl+C to stop.\n")
+        print("Visualizer window opened. This script owns the serial port while running.")
+        print("Press Ctrl+C to stop.\n")
 
         print(f"{'Time':>6}  {'X':>7} {'Y':>7} {'Z':>7} {'R':>7}  "
               f"{'J1':>7} {'J2':>7} {'J3':>7} {'J4':>7}")

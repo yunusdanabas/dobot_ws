@@ -275,17 +275,18 @@ You should see:
 
 ### Lab Integration Pattern
 
-**Terminal 1: Launch visualization**
+**Standalone visualization example**
 ```bash
 python scripts/viz_2d_realtime.py
 ```
 
-**Terminal 2: Run control code**
+**Integrated motion + visualization**
 ```bash
 python scripts/08_pick_and_place.py
 ```
 
-Both share the robot via proper port cleanup in utils.py
+Do not run both at the same time. The pyqtgraph examples are standalone and
+own the serial port while open; the integrated motion scripts use `scripts/viz.py`.
 
 ### Best Practices
 

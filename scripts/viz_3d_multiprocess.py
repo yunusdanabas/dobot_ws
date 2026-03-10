@@ -13,6 +13,7 @@ Install: pip install PyQt5 pyqtgraph numpy
 import sys
 import time
 import multiprocessing as mp
+from queue import Empty, Full
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
 from PyQt5.QtCore import QTimer
 from pyqtgraph.opengl import (
@@ -21,47 +22,45 @@ from pyqtgraph.opengl import (
 )
 import numpy as np
 
-from utils import find_port, SAFE_BOUNDS
+from utils import HARD_LIMITS, SAFE_BOUNDS, find_port, unpack_pose
 
-def robot_control_process(pose_queue, stop_event):
+def robot_control_process(port, pose_queue, stop_event):
     """
     Runs robot control in separate process.
     Continuously reads pose and puts it in queue.
     Stops when stop_event is set.
     """
+    robot = None
     try:
         from pydobotplus import Dobot
-        
-        port = find_port()
-        if not port:
-            print("Robot not found")
-            return
-        
-        robot = Dobot(port=port, verbose=False)
-        robot.wait_for_home()
-        
+
+        robot = Dobot(port=port)
         print(f"[Process] Robot connected on {port}")
-        
         while not stop_event.is_set():
             try:
-                pose = robot.get_pose()
-                # Non-blocking put with timeout to avoid deadlock
-                pose_queue.put(pose, timeout=0.5)
-            except:
+                pose_queue.put(unpack_pose(robot.get_pose()), timeout=0.2)
+            except Full:
                 pass
-            
+            except Exception as exc:
+                print(f"[Process] Pose read failed: {exc}")
+                time.sleep(0.1)
             time.sleep(0.05)  # 20 Hz sampling
-        
-        print("[Process] Closing robot...")
-        robot.close()
-    except Exception as e:
-        print(f"Robot process error: {e}")
+    except Exception as exc:
+        print(f"Robot process error: {exc}")
+    finally:
+        if robot is not None:
+            print("[Process] Closing robot...")
+            try:
+                robot.close()
+            except Exception:
+                pass
 
 class RealTimeViz3DMultiprocess(QMainWindow):
     """3D workspace visualization with multiprocessing"""
     
-    def __init__(self):
+    def __init__(self, port):
         super().__init__()
+        self.port = port
         self.setWindowTitle("Dobot 3D (Multiprocessing)")
         self.setGeometry(100, 100, 1000, 800)
         
@@ -71,10 +70,9 @@ class RealTimeViz3DMultiprocess(QMainWindow):
         self.view.setCameraPosition(distance=400, elevation=30, azimuth=-45)
         
         # Extract workspace bounds
-        bounds = SAFE_BOUNDS
-        x_min, x_max = bounds['x']
-        y_min, y_max = bounds['y']
-        z_min, z_max = bounds['z']
+        x_min, x_max = HARD_LIMITS['x']
+        y_min, y_max = HARD_LIMITS['y']
+        z_min, z_max = HARD_LIMITS['z']
         
         center_x = (x_min + x_max) / 2
         center_y = (y_min + y_max) / 2
@@ -91,6 +89,21 @@ class RealTimeViz3DMultiprocess(QMainWindow):
         )
         workspace_box.translate(center_x, center_y, center_z)
         self.view.addItem(workspace_box)
+
+        safe_box = GLBoxItem(
+            size=(
+                SAFE_BOUNDS['x'][1] - SAFE_BOUNDS['x'][0],
+                SAFE_BOUNDS['y'][1] - SAFE_BOUNDS['y'][0],
+                SAFE_BOUNDS['z'][1] - SAFE_BOUNDS['z'][0],
+            ),
+            color=(1, 1, 0, 0.08)
+        )
+        safe_box.translate(
+            (SAFE_BOUNDS['x'][0] + SAFE_BOUNDS['x'][1]) / 2,
+            (SAFE_BOUNDS['y'][0] + SAFE_BOUNDS['y'][1]) / 2,
+            (SAFE_BOUNDS['z'][0] + SAFE_BOUNDS['z'][1]) / 2,
+        )
+        self.view.addItem(safe_box)
         
         # Reference grid
         grid = GLGridItem(
@@ -134,7 +147,6 @@ class RealTimeViz3DMultiprocess(QMainWindow):
         self.max_history = 500
         
         # Status label
-        self.setStatusBar(self)
         self.statusBar().showMessage("Starting robot process...")
         
         # Multiprocessing setup
@@ -142,7 +154,7 @@ class RealTimeViz3DMultiprocess(QMainWindow):
         self.stop_event = mp.Event()
         self.process = mp.Process(
             target=robot_control_process,
-            args=(self.pose_queue, self.stop_event),
+            args=(self.port, self.pose_queue, self.stop_event),
             daemon=False
         )
         self.process.start()
@@ -160,7 +172,7 @@ class RealTimeViz3DMultiprocess(QMainWindow):
             # Non-blocking get to process all queued poses
             while True:
                 pose = self.pose_queue.get_nowait()
-                x, y, z, r = pose
+                x, y, z, r, *_ = pose
                 point = np.array([[x, y, z]])
                 
                 # Add to trajectory with rolling buffer
@@ -179,8 +191,7 @@ class RealTimeViz3DMultiprocess(QMainWindow):
                     f"History: {len(self.trajectory)} points | "
                     f"Process alive: {self.process.is_alive()}"
                 )
-        except:
-            # Queue empty, just update display
+        except Empty:
             pass
     
     def closeEvent(self, event):
@@ -215,7 +226,13 @@ def main():
     mp.set_start_method('spawn', force=True)
     
     app = QApplication(sys.argv)
-    window = RealTimeViz3DMultiprocess()
+    port = find_port()
+    if not port:
+        print("Robot not found. Run 01_find_port.py first.")
+        sys.exit(1)
+
+    print(f"Connecting to robot on {port}...")
+    window = RealTimeViz3DMultiprocess(port)
     window.show()
     sys.exit(app.exec_())
 
