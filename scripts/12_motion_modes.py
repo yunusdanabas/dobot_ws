@@ -18,13 +18,13 @@ import argparse
 import sys
 import time
 from pydobotplus import Dobot, MODE_PTP
-from utils import find_port, safe_move, go_home, get_home, check_alarms, JUMP_HEIGHT
+from utils import find_port, safe_move, go_home, prepare_robot, SAFE_READY_POSE, JUMP_HEIGHT, SPEED_SMOOTH
 from viz import RobotViz
 
 
 def _waypoints():
-    """Waypoints relative to home for MOVJ vs MOVL comparison."""
-    hx, hy, hz, hr = get_home()
+    """Waypoints relative to SAFE_READY_POSE for MOVJ vs MOVL comparison."""
+    hx, hy, hz, hr = SAFE_READY_POSE
     return [
         (hx + 30,  hy + 60,  hz - 20, 0),
         (hx,       hy - 60,  hz - 20, 0),
@@ -33,8 +33,8 @@ def _waypoints():
 
 
 def _jump_points():
-    """Two points for JUMP_XYZ demo (relative to home)."""
-    hx, hy, hz, hr = get_home()
+    """Two points for JUMP_XYZ demo (relative to SAFE_READY_POSE)."""
+    hx, hy, hz, hr = SAFE_READY_POSE
     return (hx + 20, hy - 50, hz - 50, 0), (hx + 20, hy + 50, hz - 50, 0)
 
 
@@ -51,9 +51,9 @@ def demo():
     viz = RobotViz(enabled=not args.no_viz)
     viz.attach(bot)
     try:
-        check_alarms(bot)
-        bot.speed(50, 40)
-        print("Connected. Speed set to 50 mm/s, 40 mm/s²")
+        prepare_robot(bot)
+        bot.speed(*SPEED_SMOOTH)
+        print(f"Connected. Speed set to {SPEED_SMOOTH[0]} mm/s, {SPEED_SMOOTH[1]} mm/s²")
 
         # === Demo 1: MOVJ_XYZ — joint interpolation (default mode) ===
         print("\n[Demo 1] MOVJ_XYZ — joint interpolation (curved path)")
@@ -94,7 +94,7 @@ def demo():
         go_home(bot)
 
         print("\nAll motion mode demos completed.")
-        print("See docs/motion_modes.md for the full MODE_PTP reference.")
+        print("Motion modes: MOVJ=joint interpolation, MOVL=straight line, JUMP=auto-lift.")
 
     except KeyboardInterrupt:
         print("\nInterrupted by user.")

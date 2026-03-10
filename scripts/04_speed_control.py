@@ -15,7 +15,7 @@ Usage:
 import sys
 import time
 from pydobotplus import Dobot
-from utils import find_port, safe_move, get_home, SAFE_VELOCITY, SAFE_ACCELERATION
+from utils import find_port, safe_move, go_home, SAFE_READY_POSE, SAFE_VELOCITY, SAFE_ACCELERATION
 
 # ---------------------------------------------------------------------------
 # Safe speed ceiling (do not exceed without supervision)
@@ -33,7 +33,7 @@ def main():
     print(f"Connected on {PORT}\n")
 
     try:
-        X0, Y0, Z0, R0 = get_home()
+        X0, Y0, Z0, R0 = SAFE_READY_POSE
         OFFSET = 40   # mm swing distance (round-trip = 2 × OFFSET)
 
         def run_at_speed(pct: int) -> None:
@@ -56,8 +56,9 @@ def main():
                   f"(commanded {vel:.0f} mm/s)")
 
         print("Moving to home ...")
+        go_home(bot)
         bot.speed(MAX_VELOCITY, MAX_ACCELERATION)
-        safe_move(bot, *get_home())
+        safe_move(bot, *SAFE_READY_POSE)
         time.sleep(0.5)
 
         for pct in (25, 50, 100):

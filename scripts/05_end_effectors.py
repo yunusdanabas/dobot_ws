@@ -11,7 +11,7 @@ Usage:
 import sys
 import time
 from pydobotplus import Dobot
-from utils import check_alarms, find_port, go_home
+from utils import find_port, go_home, prepare_robot
 
 
 # ---------------------------------------------------------------------------
@@ -34,7 +34,7 @@ def main():
     gripper_closed = False
 
     try:
-        check_alarms(bot)
+        prepare_robot(bot)
         go_home(bot)
         time.sleep(0.5)
 

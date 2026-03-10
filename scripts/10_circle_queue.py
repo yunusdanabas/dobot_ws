@@ -26,24 +26,23 @@ dobot_python_path = os.environ.get('DOBOT_PYTHON_PATH')
 if dobot_python_path:
     sys.path.insert(0, dobot_python_path)
 else:
-    print("⚠ DOBOT_PYTHON_PATH not set. Trying common locations...")
+    print("DOBOT_PYTHON_PATH not set. Trying common locations...")
     for candidate in [
-        "/home/yunusdanabas/dobot-python",
-        "/home/yunusdanabas/vendor/dobot-python",
         "../vendor/dobot-python",
+        "vendor/dobot-python",
     ]:
         if os.path.isdir(candidate):
             sys.path.insert(0, candidate)
             print(f"  Found at: {candidate}")
             break
     else:
-        sys.exit("❌ dobot-python not found. Set DOBOT_PYTHON_PATH or clone the repo.")
+        sys.exit("[Error] dobot-python not found. Set DOBOT_PYTHON_PATH or clone the repo.")
 
 try:
     from lib.interface import Interface
-    from utils import find_port, get_home
+    from utils import find_port, SAFE_READY_POSE, SPEED_SMOOTH
 except ImportError as e:
-    sys.exit(f"❌ Import error: {e}\nEnsure DOBOT_PYTHON_PATH is set correctly.")
+    sys.exit(f"[Error] Import failed: {e}\nEnsure DOBOT_PYTHON_PATH is set correctly.")
 
 
 def draw_circle_queue(bot, center_x, center_y, z, radius, steps=72):
@@ -62,7 +61,7 @@ def draw_circle_queue(bot, center_x, center_y, z, radius, steps=72):
         - Monitors queue index to prevent overflow
         - Uses mode=3 (linear Cartesian interpolation)
     """
-    vel, acc = 50, 40
+    vel, acc = SPEED_SMOOTH
     
     # Configure speed for all subsequent commands
     print(f"Setting speed: vel={vel} mm/s, acc={acc} mm/s²")
@@ -95,19 +94,19 @@ def draw_circle_queue(bot, center_x, center_y, z, radius, steps=72):
         time.sleep(0.05)
     
     elapsed = time.time() - wait_start
-    print(f"✓ Circle completed in {elapsed:.1f}s")
+    print(f"Circle completed in {elapsed:.1f}s")
 
 
 def demo_circles():
     """Draw multiple circles with different parameters."""
     port = find_port()
     if port is None:
-        sys.exit("❌ No serial port found. Run: python scripts/01_find_port.py")
-    
+        sys.exit("[Error] No serial port found. Run: python scripts/01_find_port.py")
+
     bot = Interface(port)
     try:
-        print("✓ Connected to Dobot (Track B)")
-        hx, hy, hz, hr = get_home()
+        print("Connected to Dobot (Track B)")
+        hx, hy, hz, hr = SAFE_READY_POSE
         
         # Move to start position
         print(f"\nMoving to start position ({hx:.0f}, {hy:.0f}, {hz:.0f})...")
@@ -134,16 +133,16 @@ def demo_circles():
         bot.set_point_to_point_command(3, hx, hy, hz, hr, queue=True)
         time.sleep(1.0)
         
-        print("\n✓ All circle demos completed successfully!")
-        
+        print("\nAll circle demos completed successfully!")
+
     except KeyboardInterrupt:
-        print("\n⚠ Interrupted by user")
+        print("\nInterrupted by user.")
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n[Error]: {e}")
         raise
     finally:
         bot.serial.close()
-        print("✓ Connection closed")
+        print("Connection closed.")
 
 
 if __name__ == "__main__":

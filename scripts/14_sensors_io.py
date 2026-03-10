@@ -19,7 +19,8 @@ Run with:
 import sys
 import time
 from pydobotplus import Dobot
-from utils import find_port, safe_move, go_home, check_alarms
+from pydobotplus.dobotplus import MODE_PTP
+from utils import find_port, safe_move, go_home, prepare_robot, JUMP_HEIGHT, SPEED_SMOOTH
 
 # Pick-and-place coordinates used by the IR-triggered demo
 PICK_X,  PICK_Y,  PICK_Z  = 220, -50, 30
@@ -34,7 +35,8 @@ def ir_triggered_pick(bot):
     bot.suck(True)
     time.sleep(0.4)
     safe_move(bot, PICK_X,  PICK_Y,  PICK_Z + LIFT, 0)
-    safe_move(bot, PLACE_X, PLACE_Y, PLACE_Z + LIFT, 0)
+    bot._set_ptp_jump_params(jump=JUMP_HEIGHT, limit=120)
+    safe_move(bot, PLACE_X, PLACE_Y, PLACE_Z + LIFT, 0, mode=MODE_PTP.JUMP_XYZ)
     safe_move(bot, PLACE_X, PLACE_Y, PLACE_Z,        0)
     bot.suck(False)
     time.sleep(0.3)
@@ -48,7 +50,8 @@ def demo():
 
     bot = Dobot(port=port)
     try:
-        check_alarms(bot)
+        prepare_robot(bot)
+        bot.speed(*SPEED_SMOOTH)
         go_home(bot)
         time.sleep(0.3)
 

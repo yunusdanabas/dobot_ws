@@ -17,7 +17,7 @@ import argparse
 import sys
 import time
 from pydobotplus import Dobot
-from utils import find_port, safe_move, safe_rel_move, go_home, get_home, check_alarms
+from utils import find_port, safe_move, safe_rel_move, go_home, prepare_robot, SAFE_READY_POSE, SPEED_SMOOTH
 from viz import RobotViz
 
 # Edit these to match your table layout (mm)
@@ -39,15 +39,14 @@ def demo():
     viz = RobotViz(enabled=not args.no_viz)
     viz.attach(bot)
     try:
-        check_alarms(bot)
-        bot.speed(50, 40)
-        print("Connected. Speed set to 50 mm/s, 40 mm/s²")
+        prepare_robot(bot)
+        bot.speed(*SPEED_SMOOTH)
+        print(f"Connected. Speed set to {SPEED_SMOOTH[0]} mm/s, {SPEED_SMOOTH[1]} mm/s²")
 
-        # === Demo 1: safe_rel_move for incremental position adjustments ===
         print("\n[Demo 1] safe_rel_move — incremental adjustments from current pose")
         go_home(bot)
         time.sleep(0.3)
-        hx, hy, hz, hr = get_home()
+        hx, hy, hz, hr = SAFE_READY_POSE
         safe_move(bot, hx, hy, hz - 20, hr)
 
         print("  +30 mm in X ...")

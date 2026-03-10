@@ -3,10 +3,9 @@ utils.py — Shared helpers for Dobot Magician lab scripts (ME403).
 
 Import in any script:
     from utils import (
-        clamp, safe_move, safe_rel_move, go_home, do_homing, unpack_pose,
+        clamp, safe_move, go_home, do_homing, unpack_pose,
         prepare_robot, check_alarms,
-        HOME_JOINTS, SAFE_READY_POSE, HARD_LIMITS, SAFE_BOUNDS, CONSERVATIVE_BOUNDS,
-        JUMP_HEIGHT, SPEED_SMOOTH, SPEED_DEFAULT, find_port
+        HOME_JOINTS, SAFE_READY_POSE, SAFE_BOUNDS, DOBOT_KEYWORDS, find_port
     )
 
 This module also applies _patch_pydobotplus() at import time, which fixes two
@@ -25,43 +24,15 @@ from serial.tools import list_ports
 
 HOME_JOINTS = (0, 0, 0, 0)  # J1, J2, J3, J4 (deg) — joint-space home
 SAFE_READY_POSE = (200, 0, 100, 0)  # X, Y, Z (mm), R (deg) — Cartesian staging pose
-READY_POSE = SAFE_READY_POSE  # backward compat
-
-# Physical/firmware hard limits — used only for visualization reference.
-# Do NOT use these as motion targets; they are the boundaries the firmware
-# enforces (or where joint singularities/cable-wrap risks begin).
-HARD_LIMITS = {
-    "x": (115, 320),   # full Cartesian reach envelope
-    "y": (-160, 160),  # arm geometry limit
-    "z": (0, 160),     # 0 mm = table surface; 160 mm = firmware ceiling
-    "r": (-135, 135),  # servo range (cable-wrap risk past ±90°)
-}
 
 # Operating safe bounds — minimal clearance from hard limits.
 # All motion commands are clamped here; safe_move() will warn when clamping.
 SAFE_BOUNDS = {
-    "x": (120, 315),   # was (150,280) — 5 mm from base singularity / max reach
-    "y": (-158, 158),  # was (-160,160) — 2 mm margin
-    "z": (5, 155),     # was (10,150) — 5 mm above table, 5 mm below ceiling
-    "r": (-90, 90),    # keep ±90° to avoid cable wrap despite servo ±135° range
+    "x": (120, 315),   # 5 mm from base singularity / max reach
+    "y": (-158, 158),  # 2 mm margin
+    "z": (5, 155),     # 5 mm above table, 5 mm below ceiling
+    "r": (-90, 90),    # keep ±90° to avoid cable wrap
 }
-
-# Tighter bounds for demos — stays well inside reachable workspace to avoid
-# POSE_LIMIT_OVER and joint limits. Use when SAFE_BOUNDS targets hit limits.
-CONSERVATIVE_BOUNDS = {
-    "x": (170, 250),
-    "y": (-120, 120),
-    "z": (30, 120),
-    "r": (-60, 60),
-}
-
-# Speed profiles (velocity mm/s, acceleration mm/s²)
-SAFE_VELOCITY     = 100   # mm/s  (~33 % of max)
-SAFE_ACCELERATION = 80    # mm/s²
-SPEED_DEFAULT    = (SAFE_VELOCITY, SAFE_ACCELERATION)
-SPEED_SMOOTH     = (50, 40)   # gentler for demos
-
-JUMP_HEIGHT = 30  # mm — default Z clearance for JUMP_XYZ mode
 
 # ---------------------------------------------------------------------------
 # Port discovery
@@ -126,16 +97,10 @@ def unpack_pose(pose) -> tuple[float, float, float, float, float, float, float, 
 
 
 def safe_move(bot, x: float, y: float, z: float, r: float, mode=None,
-              bounds: dict | None = None, verify: bool = False,
-              verify_tol_mm: float = 5, verify_tol_deg: float = 5) -> None:
-    """Move *bot* to (x, y, z, r) after clamping each axis to bounds.
+              bounds: dict | None = None) -> None:
+    """Move *bot* to (x, y, z, r) after clamping each axis to SAFE_BOUNDS.
 
-    Uses SAFE_BOUNDS by default. Pass bounds=CONSERVATIVE_BOUNDS to stay
-    well inside the reachable workspace and avoid POSE_LIMIT_OVER.
-
-    Prints a warning when any coordinate is clamped. Optional *verify* checks
-    the achieved pose after the move and warns if it differs from target.
-
+    Prints a warning when any coordinate is clamped.
     Optional *mode* sets the PTP motion mode (e.g. MODE_PTP.MOVL_XYZ).
     """
     b = bounds or SAFE_BOUNDS
@@ -150,16 +115,6 @@ def safe_move(bot, x: float, y: float, z: float, r: float, mode=None,
         bot.move_to(cx, cy, cz, cr, wait=True, mode=mode)
     else:
         bot.move_to(cx, cy, cz, cr, wait=True)
-    if verify:
-        ax, ay, az, ar, *_ = unpack_pose(bot.get_pose())
-        dx = abs(ax - cx)
-        dy = abs(ay - cy)
-        dz = abs(az - cz)
-        dr = abs(ar - cr)
-        if dx > verify_tol_mm or dy > verify_tol_mm or dz > verify_tol_mm or dr > verify_tol_deg:
-            print(f"[safe_move] LIMIT: target ({cx:.1f},{cy:.1f},{cz:.1f},{cr:.1f}) "
-                  f"-> achieved ({ax:.1f},{ay:.1f},{az:.1f},{ar:.1f}) "
-                  f"(drift: dx={dx:.1f} dy={dy:.1f} dz={dz:.1f} dr={dr:.1f})")
 
 
 def go_home(bot) -> None:
@@ -167,16 +122,6 @@ def go_home(bot) -> None:
     from pydobotplus.dobotplus import MODE_PTP
     bot.move_to(*HOME_JOINTS, wait=True, mode=MODE_PTP.MOVJ_ANGLE)
     print("[utils] At home: joint zero (0, 0, 0, 0)")
-
-
-def safe_rel_move(bot, dx: float = 0, dy: float = 0, dz: float = 0, dr: float = 0) -> None:
-    """Move relative to the current pose, clamped to SAFE_BOUNDS.
-
-    Reads the current pose, adds the deltas, then delegates to safe_move().
-    All clamping and warning logic from safe_move() applies.
-    """
-    x, y, z, r, *_ = unpack_pose(bot.get_pose())
-    safe_move(bot, x + dx, y + dy, z + dz, r + dr)
 
 
 def check_alarms(bot) -> None:
@@ -222,11 +167,6 @@ def prepare_robot(bot) -> None:
         bot.clear_alarms()
         if any(getattr(a, "name", "").find("LIMIT") >= 0 for a in alarms):
             do_homing(bot)
-
-
-def startup_check(bot) -> None:
-    """Alias for prepare_robot. Clear alarms and run homing if LIMIT alarms present."""
-    prepare_robot(bot)
 
 
 # ---------------------------------------------------------------------------

@@ -17,7 +17,8 @@ import math
 import sys
 import time
 from pydobotplus import Dobot
-from utils import find_port, safe_move, go_home, get_home
+from pydobotplus.dobotplus import MODE_PTP
+from utils import find_port, safe_move, go_home, SAFE_READY_POSE, SPEED_SMOOTH
 from viz import RobotViz
 
 def draw_circle(bot, center_x, center_y, z, radius, steps=36, viz=None):
@@ -37,7 +38,7 @@ def draw_circle(bot, center_x, center_y, z, radius, steps=36, viz=None):
         angle = 2 * math.pi * i / steps
         x = center_x + radius * math.cos(angle)
         y = center_y + radius * math.sin(angle)
-        safe_move(bot, x, y, z, 0)
+        safe_move(bot, x, y, z, 0, mode=MODE_PTP.MOVL_XYZ)
         if viz is not None:
             viz.send(x, y, z, 0)
         if i % 12 == 0:
@@ -61,7 +62,7 @@ def draw_circle_zx(bot, center_x, center_z, y, radius, steps=36, viz=None):
         angle = 2 * math.pi * i / steps
         x = center_x + radius * math.cos(angle)
         z = center_z + radius * math.sin(angle)
-        safe_move(bot, x, y, z, 0)
+        safe_move(bot, x, y, z, 0, mode=MODE_PTP.MOVL_XYZ)
         if viz is not None:
             viz.send(x, y, z, 0)
         if i % 12 == 0:
@@ -76,24 +77,22 @@ def demo_arc():
 
     port = find_port()
     if port is None:
-        sys.exit("❌ No serial port found. Run: python scripts/01_find_port.py")
-    
+        sys.exit("[Error] No serial port found. Run: python scripts/01_find_port.py")
+
     bot = Dobot(port=port)
     viz = RobotViz(enabled=not args.no_viz)
     viz.attach(bot)
     try:
-        print("✓ Connected to Dobot")
-        
-        # Set slow speed for visual validation
-        bot.speed(50, 40)
-        print("✓ Speed set to 50 mm/s, 40 mm/s²")
-        
-        # Start from home
+        print("Connected to Dobot")
+
+        bot.speed(*SPEED_SMOOTH)
+        print(f"Speed set to {SPEED_SMOOTH[0]} mm/s, {SPEED_SMOOTH[1]} mm/s²")
+
         go_home(bot)
         time.sleep(0.3)
-        hx, hy, hz, hr = get_home()
+        hx, hy, hz, hr = SAFE_READY_POSE
         safe_move(bot, hx, hy, hz, hr)
-        print(f"✓ At home: ({hx:.1f}, {hy:.1f}, {hz:.1f}, {hr:.1f})")
+        print(f"At home: ({hx:.1f}, {hy:.1f}, {hz:.1f}, {hr:.1f})")
         time.sleep(0.5)
         
         # === Demo 1: Simple arc ===
@@ -109,7 +108,7 @@ def demo_arc():
             cir_x=hx+20, cir_y=30, cir_z=hz, cir_r=0
         )
         time.sleep(0.5)
-        print("  ✓ Arc completed")
+        print("  Arc completed.")
         
         # === Demo 2: Full circle ===
         print("\n[Demo 2] Full circle (36 sampled points)")
@@ -118,35 +117,35 @@ def demo_arc():
         time.sleep(0.3)
         
         draw_circle(bot, hx+20, hy, hz, 40, steps=36, viz=viz)
-        print("  ✓ Circle completed")
+        print("  Circle completed.")
         time.sleep(0.5)
 
         # === Demo 3: Smaller circle (faster) ===
         print("\n[Demo 3] Smaller circle with fewer steps (24 points, faster)")
-        bot.speed(75, 50)  # Slightly faster
+        bot.speed(75, 50)
         draw_circle(bot, hx, hy-60, hz, 25, steps=24, viz=viz)
-        print("  ✓ Smaller circle completed")
+        print("  Smaller circle completed.")
         time.sleep(0.5)
 
         # === Demo 4: Arc in ZX plane ===
         print("\n[Demo 4] Circle in ZX plane (vertical arc, constant Y)")
-        bot.speed(50, 40)
+        bot.speed(*SPEED_SMOOTH)
         safe_move(bot, hx+20, hy, hz, hr)
         time.sleep(0.3)
         # Center at (hx+20, hz), radius 25, y fixed at 0
         draw_circle_zx(bot, hx+20, hz, hy, 25, steps=36, viz=viz)
-        print("  ✓ ZX circle completed")
+        print("  ZX circle completed.")
         time.sleep(0.5)
-        
+
         # Return to ready
         print("\n[Return] Going home")
         go_home(bot)
-        print("✓ All demos completed successfully!")
-        
+        print("All demos completed successfully.")
+
     except KeyboardInterrupt:
-        print("\n⚠ Interrupted by user")
+        print("\nInterrupted by user.")
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n[Error]: {e}")
         raise
     finally:
         try:
@@ -155,7 +154,7 @@ def demo_arc():
             pass
         viz.close()
         bot.close()
-        print("✓ Connection closed")
+        print("Connection closed.")
 
 
 if __name__ == "__main__":

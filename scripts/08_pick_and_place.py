@@ -14,7 +14,8 @@ import argparse
 import sys
 import time
 from pydobotplus import Dobot
-from utils import find_port, safe_move, go_home, SAFE_BOUNDS
+from pydobotplus.dobotplus import MODE_PTP
+from utils import find_port, safe_move, go_home, prepare_robot, SAFE_BOUNDS, JUMP_HEIGHT, SPEED_SMOOTH
 from viz import RobotViz
 
 # ---------------------------------------------------------------------------
@@ -102,6 +103,8 @@ def main():
     print(f"Connected on {PORT}\n")
 
     try:
+        prepare_robot(bot)
+        bot.speed(*SPEED_SMOOTH)
         _check("PICK", PICK_X, PICK_Y, PICK_Z)
         _check("PICK_APPROACH", PICK_X, PICK_Y, PICK_Z + LIFT)
         _check("PLACE", PLACE_X, PLACE_Y, PLACE_Z)
@@ -115,6 +118,8 @@ def main():
         pick_up(bot)
 
         print("\n--- PLACE ---")
+        bot._set_ptp_jump_params(jump=JUMP_HEIGHT, limit=120)
+        safe_move(bot, PLACE_X, PLACE_Y, PLACE_Z + LIFT, R, mode=MODE_PTP.JUMP_XYZ)
         place_down(bot)
 
         print("\nReturning home ...")

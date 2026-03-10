@@ -3,3 +3,22 @@ __pycache__/
 *.pyo
 .venv/
 *.egg-info/
+
+# Local runtime outputs
+scripts/.dobot_calibration.json
+scripts/poses.py
+scripts/joint_log*.csv
+
+CLAUDE.md
+GEMINI.md
+
+# Vendor checkout metadata / caches
+vendor/**/.git/
+vendor/**/__pycache__/
+
+Syllabus-ME403-202502.md
+research/
+docs/
+dobot_control_options_comparison.md
+.cursor/
+.ruff_cache/

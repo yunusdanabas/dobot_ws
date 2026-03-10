@@ -1,8 +1,8 @@
 """
 03_safe_move_demo.py — Demonstrate safe motion with clamped bounds.
 
-Moves the robot through a small sequence of positions relative to home
-(calibrated if available, else READY_POSE), using the safe_move() helper from utils.py.
+Moves the robot through a small sequence of positions relative to SAFE_READY_POSE,
+using the safe_move() helper from utils.py.
 
 Uses SAFE_BOUNDS with moderate deltas. At far X,Y the Z ceiling drops; if you see
 PLAN_INV_CALC/PLAN_INV_LIMIT or [safe_move] LIMIT drift, reduce DZ or use
@@ -15,10 +15,7 @@ Usage:
 import sys
 import time
 from pydobotplus import Dobot
-from utils import (
-    find_port, go_home, safe_move, check_alarms, do_homing,
-    get_home, SAFE_BOUNDS,
-)
+from utils import find_port, go_home, safe_move, prepare_robot, SAFE_READY_POSE, SAFE_BOUNDS
 
 
 def main():
@@ -30,21 +27,15 @@ def main():
     print(f"Connected on {PORT}")
 
     try:
-        alarms = bot.get_alarms()
-        if alarms:
-            print("Clearing alarms:", ", ".join(a.name for a in alarms))
-            bot.clear_alarms()
-            # Limit alarms mean robot needs homing before motion
-            if any("LIMIT" in a.name for a in alarms):
-                do_homing(bot)
+        prepare_robot(bot)
 
-        # --- Go to ready pose first ---
         print("\nMoving to home ...")
         go_home(bot)
         time.sleep(0.5)
+        safe_move(bot, *SAFE_READY_POSE)
+        time.sleep(0.3)
 
-        # --- Demo moves near SAFE_BOUNDS limits for visible motion ---
-        X0, Y0, Z0, R0 = get_home()
+        X0, Y0, Z0, R0 = SAFE_READY_POSE
         # Smaller deltas to avoid PLAN_INV_CALC/PLAN_INV_LIMIT at far X,Y (Z ceiling drops)
         DX, DY, DZ, DR = 35, 60, 25, 35  # mm / deg
 
@@ -67,7 +58,6 @@ def main():
             safe_move(bot, x, y, z, r, bounds=SAFE_BOUNDS, verify=True)
             time.sleep(0.3)
 
-        check_alarms(bot)
         print("\nDemo complete.")
     finally:
         bot.close()

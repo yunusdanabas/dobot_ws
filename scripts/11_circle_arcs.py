@@ -18,7 +18,7 @@ import math
 import sys
 import time
 from pydobotplus import Dobot
-from utils import find_port, safe_move, go_home, get_home
+from utils import find_port, safe_move, go_home, SAFE_READY_POSE, SPEED_SMOOTH
 
 def draw_circle_arcs(bot, center_x, center_y, z, radius, num_arcs=4, rot=0):
     """
@@ -42,7 +42,7 @@ def draw_circle_arcs(bot, center_x, center_y, z, radius, num_arcs=4, rot=0):
         num_arcs: Number of arc segments (default 4 = quarter-circles)
         rot: End-effector rotation (degrees)
     """
-    print(f"\n  📍 Drawing circle with {num_arcs} arc segment(s)")
+    print(f"\n  Drawing circle with {num_arcs} arc segment(s)")
     print(f"     Center: ({center_x}, {center_y}), Z={z}, Radius={radius} mm")
     print(f"     Arc angle: {360/num_arcs:.0f}° per segment")
     
@@ -84,30 +84,28 @@ def draw_circle_arcs(bot, center_x, center_y, z, radius, num_arcs=4, rot=0):
         )
         time.sleep(0.1)
     
-    print(f"     ✓ Circle complete")
+    print(f"     Circle complete.")
 
 
 def demo():
     """Demonstrate circle drawing with multiple arc decompositions."""
     port = find_port()
     if port is None:
-        sys.exit("❌ No serial port found. Run: python scripts/01_find_port.py")
-    
+        sys.exit("[Error] No serial port found. Run: python scripts/01_find_port.py")
+
     bot = Dobot(port=port)
     try:
         print("\n" + "="*70)
         print("CIRCLE DRAWING VIA go_arc() DECOMPOSITION")
         print("="*70)
-        print("✓ Connected to Dobot\n")
+        print("Connected to Dobot\n")
+
+        bot.speed(*SPEED_SMOOTH)
+        print(f"Speed: {SPEED_SMOOTH[0]} mm/s, {SPEED_SMOOTH[1]} mm/s²\n")
         
-        # Set slow speed for visual validation
-        bot.speed(50, 40)
-        print("✓ Speed: 50 mm/s velocity, 40 mm/s² acceleration\n")
-        
-        # Start from home
         go_home(bot)
         time.sleep(0.5)
-        hx, hy, hz, hr = get_home()
+        hx, hy, hz, hr = SAFE_READY_POSE
         
         # === Test 1: 4-arc circle (90° arcs) ===
         print("\n" + "─"*70)
@@ -150,7 +148,7 @@ def demo():
         time.sleep(0.5)
         
         print("\n" + "="*70)
-        print("✓ All tests completed successfully!")
+        print("All tests completed successfully.")
         print("="*70)
         print("\nKey findings:")
         print("  • 4 arcs: Minimum; noticeable angular steps at 90° intervals")
@@ -161,9 +159,9 @@ def demo():
         print("  as they are more robust and easier to debug.\n")
         
     except KeyboardInterrupt:
-        print("\n⚠ Interrupted by user")
+        print("\nInterrupted by user.")
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n[Error]: {e}")
         import traceback
         traceback.print_exc()
     finally:
@@ -172,7 +170,7 @@ def demo():
         except Exception:
             pass
         bot.close()
-        print("✓ Connection closed\n")
+        print("Connection closed.\n")
 
 
 if __name__ == "__main__":

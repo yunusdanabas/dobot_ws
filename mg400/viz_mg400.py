@@ -1,16 +1,19 @@
 """
-viz.py — Real-time dual-view visualizer for Dobot Magician motion scripts.
+viz_mg400.py — Real-time dual-view visualizer for MG400 motion scripts.
 
 Two side-by-side 2D panels (no OpenGL required):
-  Left  — Top View  (XY plane): shows horizontal reach and Y travel
-  Right — Front View (XZ plane): shows reach vs. height (elevation)
+  Left  — Top View  (XY plane): horizontal reach and Y travel
+  Right — Front View (XZ plane): reach vs. height (elevation)
 
 Usage in any motion script (3 lines):
-    from viz import RobotViz
+    from viz_mg400 import RobotViz
     viz = RobotViz()
-    viz.attach(bot)
-    # ... motion code (unchanged) ...
-    viz.close()   # in finally block, before bot.close()
+    viz.attach(move_api)        # patches move_api.MovJ and .MovL
+    # ... motion code unchanged ...
+    viz.close()                 # in finally block, before closing connections
+
+Manual pose push (e.g. in feedback loops):
+    viz.send(x, y, z, r)
 
 Disable via environment or CLI:
     DOBOT_VIZ=0 python 07_keyboard_teleop.py
@@ -19,14 +22,13 @@ Disable via environment or CLI:
 Trail length (default 500):
     DOBOT_TRAIL=1000 python 09_arc_motion.py
 
-Architecture: the motion script owns the serial port; this module spawns a
-separate subprocess (spawn context) that owns the Qt GUI.  The two processes
-communicate through a multiprocessing.Queue.  The subprocess never inherits
-the parent's serial file descriptors.
+Architecture: identical to scripts/viz.py — the motion script owns all TCP
+sockets; this module spawns a separate subprocess (spawn context) that owns
+the Qt GUI.  The two processes communicate through a multiprocessing.Queue.
+The subprocess never inherits the parent's socket file descriptors.
 
-Dependencies (auto-installed via requirements.txt):
+Dependencies (from requirements.txt):
     pip install pyqtgraph PyQt5
-    (PyOpenGL is NOT required — uses only 2D PlotWidgets, no GLViewWidget)
 """
 
 from __future__ import annotations
@@ -61,30 +63,40 @@ class RobotViz:
         except Exception as exc:
             print(f"[viz] Visualizer disabled: {exc}")
 
-    def attach(self, bot) -> None:
-        """Monkey-patch bot.move_to to auto-forward every commanded pose.
+    def attach(self, move_api) -> None:
+        """Monkey-patch move_api.MovJ and move_api.MovL to auto-forward poses.
 
-        The original method is called first so robot behavior is unchanged.
-        After each move completes, the commanded (x, y, z, r) are forwarded
-        to the visualizer queue with put_nowait (drops silently on overflow).
+        The original methods are called first so robot behavior is unchanged.
+        After each move is sent, the commanded (x,y,z,r) are forwarded to the
+        visualizer queue with put_nowait (drops silently on overflow).
         """
         if not self._enabled:
             return
-        original = bot.move_to
         q = self._queue
+        orig_movj = move_api.MovJ
+        orig_movl = move_api.MovL
 
-        def _patched(x, y, z, r, *args, **kwargs):
-            result = original(x, y, z, r, *args, **kwargs)
+        def _patched_movj(x, y, z, r, *args, **kwargs):
+            result = orig_movj(x, y, z, r, *args, **kwargs)
             try:
-                q.put_nowait((x, y, z, r))
+                q.put_nowait((float(x), float(y), float(z), float(r)))
             except Exception:
                 pass
             return result
 
-        bot.move_to = _patched
+        def _patched_movl(x, y, z, r, *args, **kwargs):
+            result = orig_movl(x, y, z, r, *args, **kwargs)
+            try:
+                q.put_nowait((float(x), float(y), float(z), float(r)))
+            except Exception:
+                pass
+            return result
+
+        move_api.MovJ = _patched_movj
+        move_api.MovL = _patched_movl
 
     def send(self, x: float, y: float, z: float, r: float) -> None:
-        """Manually push a pose update (e.g. inside arc loops or pose polling)."""
+        """Manually push a pose update (e.g. inside feedback loops or arc loops)."""
         if not self._enabled:
             return
         try:
@@ -108,10 +120,9 @@ class RobotViz:
 def _viz_process(queue) -> None:
     """Subprocess entry point — owns the Qt event loop.
 
-    All Qt/pyqtgraph imports happen here so the parent process pays no
-    import cost and its serial file descriptors are never shared.
-    Uses only PyQt5 + pyqtgraph 2D PlotWidgets (no OpenGL/GLViewWidget)
-    to avoid PyOpenGL context issues on Linux.
+    All Qt/pyqtgraph imports happen here so the parent process pays no import
+    cost and its TCP socket file descriptors are never shared with the child.
+    Uses only PyQt5 + pyqtgraph 2D PlotWidgets (no OpenGL/GLViewWidget).
     """
     import os as _os
     import sys
@@ -121,29 +132,25 @@ def _viz_process(queue) -> None:
     from PyQt5.QtWidgets import QApplication, QMainWindow, QSplitter
     import pyqtgraph as pg
 
+    # MG400 workspace constants (mirrors utils_mg400.py — kept local to avoid
+    # importing utils_mg400 in the subprocess at spawn time)
+    HL = {"x": (0,   440), "y": (-220, 220), "z": (0, 150)}   # hardware limits
+    SB = {"x": (60,  400), "y": (-220, 220), "z": (5, 140)}   # safe bounds
+
     trail_maxlen = int(_os.environ.get("DOBOT_TRAIL", "500"))
 
-    # ------------------------------------------------------------------
-    # Window class defined here so it has access to the Qt imports above
-    # ------------------------------------------------------------------
-
-    class _DobotVizWindow(QMainWindow):
+    class _MG400VizWindow(QMainWindow):
         def __init__(self, q):
             super().__init__()
             self._q = q
             self._trail: deque = deque(maxlen=trail_maxlen)
             self._move_count = 0
 
-            self.setWindowTitle("Dobot Magician — Live Visualizer")
+            self.setWindowTitle("MG400 — Live Visualizer")
             self.resize(1200, 600)
 
             splitter = QSplitter(Qt.Horizontal)
             self.setCentralWidget(splitter)
-
-            # Limit constants (mirrors utils.py — kept here to avoid importing utils
-            # in the subprocess and pulling in pydobotplus/serial at spawn time)
-            HL = {"x": (115, 320), "y": (-160, 160), "z": (0, 160)}   # hard limits
-            SB = {"x": (120, 315), "y": (-158, 158), "z": (5, 155)}   # safe bounds
 
             dashed = Qt.DashLine
 
@@ -152,21 +159,20 @@ def _viz_process(queue) -> None:
                 title="Top View (XY)  —  white=hard limits  yellow=safe bounds  [C]=clear trail"
             )
             self._plot_xy.setAspectLocked(True)
-            self._plot_xy.setXRange(90, 340)
-            self._plot_xy.setYRange(-180, 180)
+            self._plot_xy.setXRange(-50, 470)
+            self._plot_xy.setYRange(-250, 250)
             self._plot_xy.setLabel("left", "Y (mm)")
             self._plot_xy.setLabel("bottom", "X (mm)")
             splitter.addWidget(self._plot_xy)
 
-            # Hard limits box XY (white solid)
+            # Hard limits XY (white solid)
             hx, hy = HL["x"], HL["y"]
             self._plot_xy.plot(
                 [hx[0], hx[1], hx[1], hx[0], hx[0]],
                 [hy[0], hy[0], hy[1], hy[1], hy[0]],
                 pen=pg.mkPen("w", width=1),
             )
-
-            # Safe bounds box XY (yellow dashed)
+            # Safe bounds XY (yellow dashed)
             sx, sy = SB["x"], SB["y"]
             self._plot_xy.plot(
                 [sx[0], sx[1], sx[1], sx[0], sx[0]],
@@ -189,21 +195,20 @@ def _viz_process(queue) -> None:
                 title="Front View (XZ)  —  white=hard limits  yellow=safe bounds"
             )
             self._plot_xz.setAspectLocked(False)
-            self._plot_xz.setXRange(90, 340)
-            self._plot_xz.setYRange(-15, 180)
+            self._plot_xz.setXRange(-50, 470)
+            self._plot_xz.setYRange(-20, 170)
             self._plot_xz.setLabel("left", "Z (mm)")
             self._plot_xz.setLabel("bottom", "X (mm)")
             splitter.addWidget(self._plot_xz)
 
-            # Hard limits box XZ (white solid)
+            # Hard limits XZ (white solid)
             hz = HL["z"]
             self._plot_xz.plot(
                 [hx[0], hx[1], hx[1], hx[0], hx[0]],
                 [hz[0], hz[0], hz[1], hz[1], hz[0]],
                 pen=pg.mkPen("w", width=1),
             )
-
-            # Safe bounds box XZ (yellow dashed)
+            # Safe bounds XZ (yellow dashed)
             sz = SB["z"]
             self._plot_xz.plot(
                 [sx[0], sx[1], sx[1], sx[0], sx[0]],
@@ -221,15 +226,13 @@ def _viz_process(queue) -> None:
                 [], [], pen=None, symbol="o", symbolBrush="r", symbolSize=10,
             )
 
-            # Status bar
             self.statusBar().showMessage(
                 "Waiting for robot data ...  |  [C] = clear trail"
             )
 
-            # Poll queue every 50 ms
             self._timer = QTimer()
             self._timer.timeout.connect(self._poll)
-            self._timer.start(50)
+            self._timer.start(50)   # 50 ms = 20 Hz refresh
 
         def keyPressEvent(self, event) -> None:
             """Press C to clear the trail without restarting the visualizer."""
@@ -248,7 +251,6 @@ def _viz_process(queue) -> None:
                 super().keyPressEvent(event)
 
         def _poll(self) -> None:
-            """Drain all available queue items; call _update for each."""
             while True:
                 try:
                     item = self._q.get_nowait()
@@ -290,6 +292,6 @@ def _viz_process(queue) -> None:
             )
 
     app = QApplication(sys.argv)
-    window = _DobotVizWindow(queue)
+    window = _MG400VizWindow(queue)
     window.show()
     app.exec_()

@@ -13,7 +13,7 @@ Part 2 covers implementation details for TAs and anyone extending the code.
 - [Part 1 — Student Guide](#part-1--student-guide)
   - [Physical Setup](#physical-setup)
   - [Environment Setup](#environment-setup)
-  - [Script-by-Script Walkthrough](#script-by-script-walkthrough) (01–17)
+  - [Script-by-Script Walkthrough](#script-by-script-walkthrough) (01–15, 17–18)
   - [Common Workflows](#common-workflows)
   - [Troubleshooting](#troubleshooting)
 - [Part 2 — Implementation Details (for TAs)](#part-2--implementation-details-for-tas)
@@ -168,7 +168,7 @@ safe bounds.
 pause between moves. The console prints each target:
 
 ```
-Moving to READY_POSE ...
+Moving to home ...
   Forward  +X     → (230, 0, 100, 0)
   Left     +Y     → (230, 30, 100, 0)
   ...
@@ -281,7 +281,7 @@ discrete steps.
 | R / F | +Z / -Z (raise/fall) | Hold to move continuously |
 | Q / E | +R / -R (rotation) | Hold to rotate continuously |
 | Space | Toggle suction ON/OFF | — |
-| H | Go to calibrated home (or READY_POSE) | — |
+| H | Go to joint home (0,0,0,0) | — |
 | Esc | Quit | — |
 
 **What to expect:** Hold a direction key for continuous motion. The robot moves
@@ -499,29 +499,6 @@ briefly connects for each capture and releases the port again.
 
 ---
 
-### 16 — Calibrate Home
-
-```bash
-python 16_calibrate_home.py
-```
-
-**What it does:** Probes each axis (X, Y, Z, R) by moving toward the physical
-limits until a LIMIT_* alarm triggers. Records the position at each limit,
-computes the workspace center as home, and saves it to
-`scripts/.dobot_calibration.json`.
-
-**When to run:** After homing, when you want a robot-specific home position
-instead of the default READY_POSE. Useful when the robot's reach differs from
-the nominal workspace (e.g. different mounting, table height).
-
-**What you learn:** How the robot discovers its own workspace bounds. After
-calibration, `go_home()` in all other scripts uses the saved home automatically.
-
-**Options:**
-- `--no-save` — Dry run: probe limits and print results without writing the file
-
----
-
 ### 17 — Live Visualizer (Standalone Demo)
 
 ```bash
@@ -534,8 +511,11 @@ position. Reads `get_pose()` in a loop at 2 Hz, prints the pose table, and
 forwards each reading to the visualizer via `viz.send()`.
 
 **What to see:** A red dot moves inside the yellow workspace boundary as the
-robot moves. A cyan trail accumulates showing the path history. The left pane
-is a top-down XY view; the right pane is a front XZ view (reach vs. height).
+robot moves. A trail accumulates showing the path history — it fades from dim
+(oldest) to bright (most recent) so you can see the direction of travel.
+The left pane is a top-down XY view; the right pane is a front XZ view
+(reach vs. height). The status bar shows the current X/Y/Z/R and the total
+move count. Press **C** in the window at any time to clear the trail.
 
 **What you learn:** How `viz.py` works independently as a standalone,
 single-owner pose monitor. This script demonstrates the polled-pose path of
@@ -552,6 +532,47 @@ python 07_keyboard_teleop.py --no-viz
 
 **Note:** Only one process can own the serial port. Close this script before
 running any other script that connects to the robot.
+
+---
+
+### 18 — Interactive Joint-Angle Control
+
+```bash
+python 18_joint_control.py
+```
+
+**What it does:** Opens an interactive REPL that lets you command the robot by
+joint angles (J1–J4 in degrees) instead of Cartesian coordinates. Before each
+move it displays the predicted Cartesian position via forward kinematics (FK),
+executes the move with `MOVJ_ANGLE` mode, then reads back the actual achieved
+pose so you can compare prediction vs. reality.
+
+**REPL commands:**
+
+| Input | Action |
+|-------|--------|
+| `j1 j2 j3 j4` | Move to these joint angles (degrees) |
+| `r` | Read and print the current pose (Cartesian + joints) |
+| `h` | Go to joint home (0,0,0,0) |
+| `q` | Quit |
+
+**What you learn:** How joint-space commands differ from Cartesian commands,
+how the Dobot's parallel linkage determines FK (forearm angle = J2 + J3), and
+where joint limits sit relative to the Cartesian workspace.
+
+**FK model used:**
+```
+reach  = L1·cos(J2) + L2·cos(J2+J3)   # L1=135 mm, L2=147 mm
+height = L1·sin(J2) + L2·sin(J2+J3)
+X = reach·cos(J1),   Y = reach·sin(J1)
+```
+
+**Joint bounds enforced:** J1 ±90°, J2 0–85°, J3 −10–85°, J4 ±90°.
+Values outside these bounds are clamped with a warning.
+
+**Options:**
+- Set `LOG_TO_CSV = True` in the script to write every move to `joint_log_18.csv`
+  (columns: timestamp, commanded joints, FK prediction, actual Cartesian + joints)
 
 ---
 
@@ -578,16 +599,6 @@ running any other script that connects to the robot.
 3. Press Ctrl+C when done
 4. Open `joint_log.csv` in your analysis tool of choice
 
-### Calibrating Workspace Home
-
-Run when the robot's reach differs from the default (e.g. different table height):
-
-1. Ensure the robot is homed (run `03_safe_move_demo.py` or `do_homing(bot)` if LIMIT alarms appear)
-2. `python 16_calibrate_home.py` — probes limits, computes center, saves to `.dobot_calibration.json`
-3. All scripts that call `go_home()` will now use the calibrated home
-
-To revert to the default READY_POSE, delete `scripts/.dobot_calibration.json`.
-
 ### Real-Time Visualization
 
 Integrated visualization is built into scripts 07–09, 12, and 13. Script 17
@@ -600,6 +611,11 @@ DOBOT_VIZ=0 python 08_pick_and_place.py
 python 08_pick_and_place.py --no-viz
 ```
 
+To **extend the trail** for dense paths (e.g. full circles):
+```bash
+DOBOT_TRAIL=1000 python 09_arc_motion.py   # default is 500 points
+```
+
 To **add to a new script** (3 lines):
 ```python
 from viz import RobotViz
@@ -607,6 +623,9 @@ viz = RobotViz(); viz.attach(bot)   # after bot = Dobot(...)
 # ... motion code unchanged ...
 viz.close()                          # in finally, before bot.close()
 ```
+
+**While the window is open:** press **C** to clear the trail without restarting.
+The status bar always shows the current X/Y/Z/R and the total move count.
 
 There is no shared-port passive monitor: only one process can own the serial
 port at a time. Use `17_visualizer.py` when pose polling and visualization are
@@ -717,6 +736,7 @@ Call `check_alarms(bot)` after connecting to clear any limit alarms before motio
 
 ```
 scripts/
+├── README.md             ← Script grouping: numbered labs vs support files
 ├── utils.py              ← Shared safety layer (all scripts import from here)
 ├── 01_find_port.py       ← Port discovery (standalone, no robot connection)
 ├── 02_first_connection.py ← Minimal connect + read pose
@@ -733,12 +753,13 @@ scripts/
 ├── 13_relative_moves.py  ← safe_rel_move() / relative pick-and-place
 ├── 14_sensors_io.py      ← IR sensor, color sensor, digital I/O
 ├── 15_record_pose.py     ← Pose recorder with reconnect-per-capture workflow
-├── 16_calibrate_home.py  ← Probe limits, compute home, save to .dobot_calibration.json
 ├── 17_visualizer.py      ← Live pose monitor + RobotViz standalone demo
+├── 18_joint_control.py   ← Interactive J1–J4 REPL: FK preview, MOVJ_ANGLE, CSV log
 ├── pyqtgraph_helpers.py  ← Shared QThread polling helper for standalone viz examples
 └── viz.py                ← RobotViz utility: dual-view 2D visualizer (spawn subprocess, PyQt5)
 
 docs/                     ← API reference and circle math guides
+├── README.md             ← Canonical docs index
 ├── pydobotplus_api_reference.md
 ├── pydobotplus_api_detailed.md
 ├── safe_move_patterns.md
@@ -747,6 +768,26 @@ docs/                     ← API reference and circle math guides
 ├── circle_drawing_math.md
 ├── circle_arc_math_reference.md
 └── motion_modes.md       ← MODE_PTP complete reference
+
+mg400/                    ← MG400 parallel workspace (TCP/IP, 440 mm reach)
+├── utils_mg400.py        ← Shared helpers: connect(), safe_move(), parse_pose(), check_errors()
+├── viz_mg400.py          ← RobotViz for MG400 (same architecture as viz.py)
+├── 01_connect_test.py    ← TCP ping + status (no enable)
+├── 02_first_connection.py ← Enable, query, go_home, disable
+├── 03_safe_move_demo.py  ← safe_move() with clamping demo
+├── 04_speed_control.py   ← SpeedFactor/SpeedJ/SpeedL/AccJ/AccL demo
+├── 05_end_effectors.py   ← ToolDO suction/gripper + base DO/DI
+├── 06_joint_angles.py    ← GetAngle, JointMovJ, FK/IK
+├── 07_keyboard_teleop.py ← MoveJog terminal jog (hold-to-move)
+├── 08_pick_and_place.py  ← Lift/descend pick-and-place with suction
+├── 09_arc_motion.py      ← Arc(), Circle(), sampled circle
+├── 10_relative_moves.py  ← RelMovJ, RelMovL, relative pick-and-place
+├── 11_motion_modes.py    ← MovJ vs MovL vs Arc comparison
+└── 12_feedback_monitor.py ← Live pose from port 30004 + viz
+
+vendor/
+├── dobot-python/         ← Track B SDK (Magician, for scripts/10_circle_queue.py)
+└── TCP-IP-4Axis-Python/  ← MG400 SDK (dobot_api.py + MyType numpy dtype)
 ```
 
 **Design principles:**
@@ -769,10 +810,10 @@ The safety layer lives entirely in `utils.py`:
 
 ```python
 # Constants
-READY_POSE        = (200, 0, 100, 0)      # Safe home position
+HOME_JOINTS       = (0, 0, 0, 0)           # Joint-space home (J1,J2,J3,J4 deg)
+SAFE_READY_POSE   = (200, 0, 100, 0)       # Cartesian staging pose for demos
 SAFE_BOUNDS       = {"x": (120, 315), "y": (-158, 158), "z": (5, 155), "r": (-90, 90)}
-SAFE_VELOCITY     = 100                    # mm/s
-SAFE_ACCELERATION = 80                     # mm/s²
+SPEED_SMOOTH      = (50, 40)               # mm/s, mm/s² for smooth demos
 JUMP_HEIGHT       = 30                     # mm — Z clearance for JUMP_XYZ mode
 
 # Core functions
@@ -780,11 +821,10 @@ find_port(keyword)              → str | None  # Auto-detect serial port
 clamp(v, lo, hi)                → float       # Clamp value to [lo, hi]
 safe_move(bot, x,y,z,r, mode)  → None        # Clamp + warn + move_to (optional MODE_PTP)
 safe_rel_move(bot, dx,dy,dz,dr) → None       # Relative move clamped to SAFE_BOUNDS
-go_home(bot)                    → None        # Move to calibrated home (or READY_POSE) via safe_move
-get_home()                      → (x,y,z,r)  # Return home coords without moving (cached from JSON)
+go_home(bot)                    → None        # Move to joint zero via MOVJ_ANGLE
+prepare_robot(bot)              → None        # Clear alarms, run homing if LIMIT
 do_homing(bot)                  → None        # Run homing sequence (after power-on)
 check_alarms(bot)               → None        # Print named alarms then clear them
-startup_check(bot)              → None        # Simpler alarm check (no name printing)
 ```
 
 **How `safe_move()` works:** It clamps each axis independently to its bounds
@@ -913,10 +953,24 @@ Disable the visualizer during development with `DOBOT_VIZ=0 python NN_descriptio
 
 ## Additional References
 
+### Dobot Magician (USB-serial)
+
+- [`README.md`](./README.md) — workspace landing page and quick navigation
 - [`requirements.txt`](./requirements.txt) — pip dependencies (pydobotplus, pydobot, pyserial, pyqtgraph, PyQt5, numpy)
 - [`dobot_control_options_comparison.md`](./dobot_control_options_comparison.md) — hardware specs, library syntax, safety, motion modes
+- [`scripts/README.md`](./scripts/README.md) — numbered script sequence and support-file grouping
 - [`docs/`](./docs/) — API reference for pydobotplus, arc/circle math guides, safe_move pattern analysis, and motion modes reference
+- [`docs/README.md`](./docs/README.md) — canonical docs index
 - [`docs/motion_modes.md`](./docs/motion_modes.md) — Complete MODE_PTP table, MOVJ/MOVL/JUMP decision guide, JUMP configuration, alarm codes
 - [`docs/circle_drawing_index.md`](./docs/circle_drawing_index.md) — Start here for circle drawing: links to math guides, scripts, and worked examples
 - [`scripts/viz.py`](./scripts/viz.py) — `RobotViz` class: real-time dual-view 2D visualizer (disable with `DOBOT_VIZ=0` or `--no-viz`)
 - [`scripts/17_visualizer.py`](./scripts/17_visualizer.py) — standalone pose monitor; demonstrates `RobotViz` without motion
+- [`scripts/18_joint_control.py`](./scripts/18_joint_control.py) — interactive joint-angle REPL with FK display, clamping, and CSV logging
+
+### DOBOT MG400 (TCP/IP)
+
+- [`mg400/`](./mg400/) — parallel workspace for the MG400 (440 mm reach, Ethernet, TCP/IP)
+- [`mg400/utils_mg400.py`](./mg400/utils_mg400.py) — MG400 equivalents of `utils.py`: `connect()`, `safe_move()`, `parse_pose()`, `check_errors()`, constants
+- [`mg400/viz_mg400.py`](./mg400/viz_mg400.py) — `RobotViz` adapted for MG400 workspace bounds; same 3-line integration pattern
+- [`vendor/TCP-IP-4Axis-Python/`](./vendor/TCP-IP-4Axis-Python/) — Dobot official MG400 SDK (`dobot_api.py`, `MyType` numpy dtype for port 30004)
+- `CLAUDE.md §MG400` / `GEMINI.md §MG400` — full API reference, network setup, coordinate bounds, and script table (01–12)
