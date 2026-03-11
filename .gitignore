@@ -15,6 +15,7 @@ GEMINI.md
 # Vendor checkout metadata / caches
 vendor/**/.git/
 vendor/**/__pycache__/
+vendor/
 
 Syllabus-ME403-202502.md
 research/
