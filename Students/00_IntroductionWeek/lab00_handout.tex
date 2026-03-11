@@ -1,0 +1,351 @@
+\documentclass[11pt,a4paper]{article}
+
+% ── Geometry ──────────────────────────────────────────────────────────────────
+\usepackage[top=2cm,bottom=2cm,left=2cm,right=2cm,headheight=14pt]{geometry}
+
+% ── Encoding & fonts ──────────────────────────────────────────────────────────
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+
+% ── Colors (Muted Tones) ──────────────────────────────────────────────────────
+\usepackage{xcolor}
+\definecolor{MainBlack}{HTML}{222222}
+\definecolor{DimGray}{HTML}{666666}
+\definecolor{ToneGrayBg}{HTML}{F5F5F5}
+\definecolor{ToneGrayFrame}{HTML}{333333}
+\definecolor{ToneBlueBg}{HTML}{F0F7FF}
+\definecolor{ToneBlueFrame}{HTML}{2E5A88}
+\definecolor{ToneRedBg}{HTML}{FFF5F5}
+\definecolor{ToneRedFrame}{HTML}{A33333}
+
+\definecolor{AxisRed}{HTML}{C8102E}
+\definecolor{AxisBlue}{HTML}{1A5276}
+\definecolor{AxisGreen}{HTML}{1D8348}
+
+% ── Math ──────────────────────────────────────────────────────────────────────
+\usepackage{amsmath}
+
+% ── Tables ────────────────────────────────────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage[table]{xcolor}
+
+% ── Code listings ─────────────────────────────────────────────────────────────
+\usepackage{listings}
+
+\lstdefinestyle{PythonStyle}{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\bfseries,
+  commentstyle=\color{DimGray}\itshape,
+  stringstyle=\color{DimGray},
+  numberstyle=\tiny\color{DimGray},
+  backgroundcolor=\color{ToneGrayBg},
+  frame=none,
+  breaklines=true,
+  tabsize=4,
+  showstringspaces=false,
+  xleftmargin=5pt,
+}
+
+\lstdefinestyle{BashStyle}{
+  language=bash,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\bfseries,
+  backgroundcolor=\color{ToneGrayBg},
+  frame=none,
+  numbers=none,
+  breaklines=true,
+  tabsize=4,
+  showstringspaces=false,
+  xleftmargin=5pt,
+}
+
+% ── Modern Boxes (Accent Style) ───────────────────────────────────────────────
+\usepackage[most]{tcolorbox}
+
+\tcbset{
+  accentbox/.style={
+    enhanced,
+    breakable,
+    sharp corners,
+    boxrule=0pt,
+    leftrule=3pt,
+    left=10pt, right=10pt, top=8pt, bottom=8pt,
+    fonttitle=\bfseries\small,
+    attach title to upper,
+    after title={\par\smallskip\hrule\smallskip},
+  },
+  setupbox/.style={
+    accentbox,
+    colback=ToneGrayBg,
+    colframe=ToneGrayFrame,
+    coltitle=ToneGrayFrame,
+  },
+  safetybox/.style={
+    accentbox,
+    colback=ToneRedBg,
+    colframe=ToneRedFrame,
+    coltitle=ToneRedFrame,
+  },
+  infobox/.style={
+    accentbox,
+    colback=ToneBlueBg,
+    colframe=ToneBlueFrame,
+    coltitle=ToneBlueFrame,
+  },
+}
+
+% ── Lists ─────────────────────────────────────────────────────────────────────
+\usepackage{enumitem}
+\setlist{noitemsep, topsep=3pt}
+
+% ── TikZ ──────────────────────────────────────────────────────────────────────
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, calc}
+
+% ── Headers & footers ─────────────────────────────────────────────────────────
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+\lhead{\textbf{ME403 -- Introduction to Robotics}}
+\rhead{\textit{Lab 00: Introduction Week}}
+\lfoot{\small Sabanci University, Spring 2025-26}
+\rfoot{\small Page \thepage}
+
+% ── Section formatting ────────────────────────────────────────────────────────
+\usepackage{titlesec}
+\titleformat{\section}
+  {\large\bfseries}
+  {\thesection.}{0.5em}{}
+  [\rule{\linewidth}{0.8pt}]
+
+\titleformat{\subsection}
+  {\normalsize\bfseries}
+  {\thesubsection.}{0.5em}{}
+
+\titlespacing*{\section}{0pt}{18pt}{8pt}
+\titlespacing*{\subsection}{0pt}{12pt}{6pt}
+
+% ── Hyperlinks ────────────────────────────────────────────────────────────────
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=MainBlack,
+  urlcolor=MainBlack,
+  citecolor=MainBlack,
+}
+
+% ── Misc ──────────────────────────────────────────────────────────────────────
+\setlength{\parskip}{6pt}
+\setlength{\parindent}{0pt}
+
+% ──────────────────────────────────────────────────────────────────────────────
+\begin{document}
+
+% ── Title block ───────────────────────────────────────────────────────────────
+\thispagestyle{fancy}
+\begin{center}
+  \rule{\linewidth}{1.5pt}\\[8pt]
+  {\LARGE\bfseries ME403 -- Introduction to Robotics}\\[4pt]
+  {\large\bfseries Lab 00: Introduction Week Handout}\\[4pt]
+  {\normalsize Sabanci University \quad|\quad Spring 2025-26}\\[6pt]
+  \rule{\linewidth}{1.5pt}
+\end{center}
+
+\vspace{10pt}
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Overview}
+% ──────────────────────────────────────────────────────────────────────────────
+
+This lab session focuses on setting up your development environment and verifying the connection with the Dobot Magician robotic arm. You will learn how to interface with the robot using Python and perform basic joint-space control.
+
+\subsection*{Included Scripts}
+
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{@{}lp{12cm}@{}}
+  \toprule
+  \textbf{Script} & \textbf{Purpose and Usage} \\
+  \midrule
+  \texttt{01\_init\_check.py} & \textbf{Purpose:} Verifies the hardware connection, clears active alarms, and moves the robot to a safe ready position. \newline \textbf{Usage:} Run this first to ensure your setup is functional. \\
+  \texttt{02\_joint\_control.py} & \textbf{Purpose:} Provides an interactive terminal interface (REPL) to move individual joints. \newline \textbf{Usage:} Enter joint angles in degrees to observe the robot's motion. \\
+  \bottomrule
+\end{tabular}
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Quick Start Guide}
+% ──────────────────────────────────────────────────────────────────────────────
+
+\begin{tcolorbox}[setupbox, title={Option A: Mamba (Recommended)}]
+\begin{lstlisting}[style=BashStyle]
+# 1. Activate your environment
+mamba activate dobot
+
+# 2. Install requirements
+pip install -r requirements.txt
+
+# 3. Verify connection
+python 01_init_check.py
+\end{lstlisting}
+\end{tcolorbox}
+
+\begin{tcolorbox}[setupbox, title={Option B: Python venv}]
+\begin{lstlisting}[style=BashStyle]
+# 1. Create and activate environment
+python3 -m venv .venv
+source .venv/bin/activate    # Linux/macOS
+# .venv\Scripts\activate     # Windows
+
+# 2. Install requirements and verify
+pip install -r requirements.txt
+python 01_init_check.py
+\end{lstlisting}
+\end{tcolorbox}
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Hardware Configuration}
+% ──────────────────────────────────────────────────────────────────────────────
+
+\subsection{Physical Setup Protocol}
+
+\begin{enumerate}
+  \item \textbf{Surface:} Place the robot on a flat, stable surface. Clear a 40\,cm radius around the base.
+  \item \textbf{Posture:} Manually set the arm to a neutral posture (both segments at $\approx$45$^\circ$) before powering on to prevent sudden torque spikes.
+  \item \textbf{Power:} Connect the 12V DC adapter. \textbf{USB power alone is insufficient} for motor operation.
+  \item \textbf{Communication:} Connect the USB cable. The robot uses a CP210x USB-to-UART bridge.
+\end{enumerate}
+
+\subsection{Status Signals}
+
+\begin{itemize}
+  \item \textbf{Green LED + Single Beep:} System initialized and ready.
+  \item \textbf{Red LED + Rapid Beeping:} Alarm state (usually a collision or limit violation). Run \texttt{01\_init\_check.py} to clear.
+  \item \textbf{Yellow/Flashing LED:} Busy (homing or executing a command).
+\end{itemize}
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Software and OS Setup}
+% ──────────────────────────────────────────────────────────────────────────────
+
+\subsection{Linux Setup}
+Users must have permission to access serial devices. Run the following once:
+\begin{lstlisting}[style=BashStyle]
+sudo usermod -a -G dialout $USER
+# Log out and log back in for changes to take effect.
+\end{lstlisting}
+The robot typically appears as \texttt{/dev/ttyUSB0} or \texttt{/dev/ttyACM0}.
+
+\subsection{Windows Setup}
+The driver is usually handled by Windows Update. To find the port:
+\begin{enumerate}
+  \item Open \textbf{Device Manager}.
+  \item Expand \textbf{Ports (COM \& LPT)}.
+  \item Look for \textbf{Silicon Labs CP210x USB to UART Bridge} (e.g., \texttt{COM3}).
+\end{enumerate}
+
+\subsection{macOS Setup}
+Modern macOS versions include the driver. The device will appear as:
+\texttt{/dev/cu.usbserial-*} or \texttt{/dev/cu.SLAB\_USBtoUART}.
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Dobot Magician Reference}
+% ──────────────────────────────────────────────────────────────────────────────
+
+\subsection{Coordinate System (Cartesian)}
+
+\begin{minipage}[t]{0.45\linewidth}
+\vspace{0pt}
+\begin{tikzpicture}[>=Stealth, thick]
+  % Grid/Base
+  \fill[gray!10] (0,0) -- (2.4,0) -- (1.6,-0.9) -- (-0.8,-0.9) -- cycle;
+  \draw[gray!30] (0,0) -- (2.4,0) -- (1.6,-0.9) -- (-0.8,-0.9) -- cycle;
+  
+  % Axes
+  \draw[->, AxisRed, line width=1.5pt] (0,0) -- (2.4,0) node[right]{\small\textbf{X}};
+  \draw[->, AxisBlue, line width=1.5pt] (0,0) -- (-1.0,-0.75) node[left]{\small\textbf{Y}};
+  \draw[->, AxisGreen, line width=1.5pt] (0,0) -- (0,2.4) node[above, AxisGreen]{\small\textbf{Z}};
+  
+  % Origin
+  \filldraw[black] (0,0) circle (2pt);
+  \node[below right, font=\tiny, DimGray] at (0,0) {Base Center};
+\end{tikzpicture}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.50\linewidth}
+\vspace{0pt}
+\begin{itemize}
+  \item \textbf{\color{AxisRed}X-axis:} Forward (pointing away from base).
+  \item \textbf{\color{AxisBlue}Y-axis:} Left/Right (Left is positive).
+  \item \textbf{\color{AxisGreen}Z-axis:} Vertical (Up is positive).
+  \item \textbf{Units:} Millimeters (mm).
+  \item \textbf{Rotation (R):} Tool rotation in degrees.
+\end{itemize}
+\end{minipage}
+
+\subsection{Joint Definitions and Safe Limits}
+
+\begin{tabular}{@{}llll@{}}
+  \toprule
+  \textbf{Joint} & \textbf{Motion} & \textbf{Safe Range} & \textbf{Units} \\
+  \midrule
+  J1 & Base Rotation & $\pm$90$^\circ$ & deg \\
+  J2 & Rear Arm Elevation & 0$^\circ$ to 85$^\circ$ & deg \\
+  J3 & Forearm Elevation & -10$^\circ$ to 85$^\circ$ & deg \\
+  J4 & End-Effector Rotation & $\pm$90$^\circ$ & deg \\
+  \bottomrule
+\end{tabular}
+
+\vspace{10pt}
+
+\begin{tabular}{@{}lll@{}}
+  \toprule
+  \textbf{Cartesian Dimension} & \textbf{Safe Operating Range} & \textbf{Unit} \\
+  \midrule
+  X (Reach) & 120 to 315 & mm \\
+  Y (Slew)  & $\pm$158 & mm \\
+  Z (Height) & 5 to 155 & mm \\
+  \bottomrule
+\end{tabular}
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Troubleshooting}
+% ──────────────────────────────────────────────────────────────────────────────
+
+\begin{tcolorbox}[infobox, title={Common Connection Issues}]
+\rowcolors{2}{white}{ToneBlueBg}
+\begin{tabular}{@{}p{5cm}p{10cm}@{}}
+  \toprule
+  \textbf{Symptom} & \textbf{Recommended Action} \\
+  \midrule
+  \texttt{Access Denied} or \texttt{Port Busy} & Ensure \textbf{DobotStudio} and all other Python scripts are closed. Only one process can own the serial port. \\
+  \texttt{Device not found} & Verify both USB and Power cables. Check Device Manager (Win) or \texttt{ls /dev/tty*} (Unix). \\
+  Motors don't move & Check the 12V power supply. If the light is red, run \texttt{01\_init\_check.py} to clear alarms. \\
+  Erratic movement & Reset to neutral posture and power cycle the robot. \\
+  \bottomrule
+\end{tabular}
+\end{tcolorbox}
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Safety Mandates}
+% ──────────────────────────────────────────────────────────────────────────────
+
+\begin{tcolorbox}[safetybox, title={Mandatory Safety Rules}]
+\begin{enumerate}
+  \item \textbf{Workspace:} Maintain a clean area. No cables or personal items in the reach zone.
+  \item \textbf{Initialization:} Always run \texttt{01\_init\_check.py} before starting your own scripts.
+  \item \textbf{Helper Functions:} Use \texttt{safe\_move()} from \texttt{utils.py}. It enforces software limits to prevent physical damage.
+  \item \textbf{Supervision:} Stay within reach of the power cable for immediate emergency disconnection.
+\end{enumerate}
+\end{tcolorbox}
+
+\vfill
+\rule{\linewidth}{0.4pt}
+\begin{center}
+  \small ME403 Introduction to Robotics --- Sabanci University --- Spring 2025-26
+\end{center}
+
+\end{document}

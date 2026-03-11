@@ -161,11 +161,12 @@ def prepare_robot(bot) -> None:
     """
     alarms = bot.get_alarms()
     if alarms:
+        alarm_names = [str(getattr(a, "name", a)) for a in alarms]
         print(f"[prepare_robot] Clearing {len(alarms)} alarm(s):")
-        for a in alarms:
-            print(f"  {getattr(a, 'name', a)}")
+        for name in alarm_names:
+            print(f"  {name}")
         bot.clear_alarms()
-        if any(getattr(a, "name", "").find("LIMIT") >= 0 for a in alarms):
+        if any("LIMIT" in name.upper() for name in alarm_names):
             do_homing(bot)
 
 
