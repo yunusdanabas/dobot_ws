@@ -27,7 +27,8 @@ Hold-to-move: MoveJog runs until MoveJog("") is called or the arm hits a limit.
 The robot firmware handles deceleration at joint/Cartesian limits automatically.
 
 Usage:
-    python 07_keyboard_teleop.py [--ip 192.168.1.6] [--no-viz]
+    python 07_keyboard_teleop.py [--ip 192.168.2.9] [--viz]
+    python 07_keyboard_teleop.py --robot 2 [--viz]
 """
 
 import argparse
@@ -45,6 +46,7 @@ from utils_mg400 import (
     parse_pose,
     SPEED_DEFAULT,
     MG400_IP,
+    ROBOT_IPS,
 )
 from viz_mg400 import RobotViz
 
@@ -116,14 +118,17 @@ _KEY_TO_JOG = {
 def main():
     parser = argparse.ArgumentParser(description="MG400 keyboard teleop")
     parser.add_argument("--ip", default=MG400_IP, help="MG400 IP address")
-    parser.add_argument("--no-viz", action="store_true", help="Disable visualizer")
+    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
+                        help="Robot number 1-4 (overrides --ip)")
+    parser.add_argument("--viz", action="store_true", help="Enable visualizer")
     args = parser.parse_args()
+    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
 
     if not sys.stdin.isatty():
         sys.exit("[Error] Run from an interactive terminal (keyboard input required).")
 
-    dashboard, move_api, feed = connect(args.ip)
-    viz        = RobotViz(enabled=not args.no_viz)
+    dashboard, move_api, feed = connect(ip)
+    viz        = RobotViz(enabled=args.viz)
     suction_on = False
 
     try:

@@ -17,8 +17,14 @@ One-time SDK setup:
     git clone https://github.com/Dobot-Arm/TCP-IP-4Axis-Python.git \\
         /path/to/dobot_ws/vendor/TCP-IP-4Axis-Python
 
-Network setup (one-time): set PC Ethernet to static 192.168.1.100/24.
-Verify:  ping 192.168.1.6
+Network setup (one-time): set PC Ethernet to static 192.168.2.100/24.
+Verify:  ping 192.168.2.9
+
+Robot IP map (192.168.2.x subnet):
+  Robot 1 → 192.168.2.9
+  Robot 2 → 192.168.2.10
+  Robot 3 → 192.168.2.7
+  Robot 4 → 192.168.2.8
 
 MG400 coordinate notes (verified from Dobot hardware spec v1.1):
   - X: 0–440 mm  (safe inner limit ≈60 mm due to base singularity)
@@ -68,7 +74,13 @@ from dobot_api import DobotApiDashboard, DobotApiMove, DobotApi, MyType  # noqa:
 # Constants
 # ---------------------------------------------------------------------------
 
-MG400_IP       = "192.168.1.6"
+ROBOT_IPS = {
+    1: "192.168.2.9",
+    2: "192.168.2.10",
+    3: "192.168.2.7",
+    4: "192.168.2.8",
+}
+MG400_IP       = ROBOT_IPS[1]   # default: Robot 1
 DASHBOARD_PORT = 29999
 MOVE_PORT      = 30003
 FEED_PORT      = 30004
@@ -144,6 +156,26 @@ def close_all(dashboard, move_api, feed) -> None:
             obj.close()
         except Exception:
             pass
+
+
+def connect_multi(robot_ids=None):
+    """Connect to multiple MG400 robots simultaneously.
+
+    Args:
+        robot_ids: list of ints 1-4. None = all 4 robots.
+
+    Returns:
+        dict mapping robot_id → (dashboard, move_api, feed)
+    """
+    if robot_ids is None:
+        robot_ids = list(ROBOT_IPS.keys())
+    return {rid: connect(ROBOT_IPS[rid]) for rid in robot_ids}
+
+
+def close_all_robots(robots: dict) -> None:
+    """Close all connections returned by connect_multi()."""
+    for _rid, (dashboard, move_api, feed) in robots.items():
+        close_all(dashboard, move_api, feed)
 
 # ---------------------------------------------------------------------------
 # Response parsing
@@ -263,6 +295,8 @@ def check_errors(dashboard) -> None:
     """Query GetErrorID(), print any active errors, then ClearError + Continue.
 
     Safe to call at startup; silently returns if no errors exist.
+    Raises RuntimeError if errors cannot be cleared (robot needs physical
+    intervention — check E-stop, collision guards, joint limits, then power-cycle).
     """
     try:
         resp = dashboard.GetErrorID()
@@ -272,10 +306,20 @@ def check_errors(dashboard) -> None:
         if error_ids:
             print(f"[check_errors] Active error IDs: {error_ids}")
             dashboard.ClearError()
-            dashboard.Continue()
+            cont_resp = dashboard.Continue()
+            # A -1 return code means the command was rejected (robot still in ERROR)
+            if not cont_resp or cont_resp.strip().startswith("-1"):
+                raise RuntimeError(
+                    f"[check_errors] Cannot clear robot errors {error_ids}.\n"
+                    "  Robot is still in ERROR mode — do not proceed.\n"
+                    "  Required action: check E-stop, collision guards, and joint limits,\n"
+                    "  then power-cycle the robot (hold power button ~3 s)."
+                )
             print("[check_errors] Errors cleared, robot resumed.")
         else:
             print("[check_errors] No errors.")
+    except RuntimeError:
+        raise
     except Exception as exc:
         print(f"[check_errors] Could not read errors: {exc}")
 

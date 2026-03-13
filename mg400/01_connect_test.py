@@ -6,13 +6,14 @@ and prints firmware version, robot mode, and current pose WITHOUT
 enabling the robot (motors stay off).
 
 Prerequisites:
-  1. PC Ethernet set to static 192.168.1.100 / 255.255.255.0
-  2. ping 192.168.1.6 succeeds
+  1. PC Ethernet set to static 192.168.2.100 / 255.255.255.0
+  2. ping 192.168.2.9 succeeds (Robot 1 default)
   3. SDK cloned: git clone https://github.com/Dobot-Arm/TCP-IP-4Axis-Python.git
                   /path/to/dobot_ws/vendor/TCP-IP-4Axis-Python
 
 Usage:
-    python 01_connect_test.py [--ip 192.168.1.6]
+    python 01_connect_test.py [--ip 192.168.2.9]
+    python 01_connect_test.py --robot 2
 """
 
 import argparse
@@ -24,6 +25,7 @@ from utils_mg400 import (
     parse_pose,
     parse_robot_mode,
     MG400_IP,
+    ROBOT_IPS,
     ROBOT_MODE,
 )
 
@@ -31,17 +33,20 @@ from utils_mg400 import (
 def main():
     parser = argparse.ArgumentParser(description="MG400 TCP connectivity test")
     parser.add_argument("--ip", default=MG400_IP, help="MG400 IP address")
+    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
+                        help="Robot number 1-4 (overrides --ip)")
     args = parser.parse_args()
+    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
 
-    print(f"Connecting to MG400 at {args.ip} ...")
+    print(f"Connecting to MG400 at {ip} ...")
     try:
-        dashboard, move_api, feed = connect(args.ip)
+        dashboard, move_api, feed = connect(ip)
     except ConnectionRefusedError:
         sys.exit(
             "[Error] Connection refused. Check:\n"
             "  1. MG400 is powered and Ethernet cable connected\n"
-            "  2. PC Ethernet static IP = 192.168.1.100 / 255.255.255.0\n"
-            f"  3. ping {args.ip} succeeds"
+            "  2. PC Ethernet static IP = 192.168.2.100 / 255.255.255.0\n"
+            f"  3. ping {ip} succeeds"
         )
     except OSError as exc:
         sys.exit(f"[Error] Cannot connect: {exc}")

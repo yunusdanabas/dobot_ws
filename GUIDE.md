@@ -13,7 +13,7 @@ Part 2 covers implementation details for TAs and anyone extending the code.
 - [Part 1 — Student Guide](#part-1--student-guide)
   - [Physical Setup](#physical-setup)
   - [Environment Setup](#environment-setup)
-  - [Script-by-Script Walkthrough](#script-by-script-walkthrough) (01–15, 17–18)
+  - [Script-by-Script Walkthrough](#script-by-script-walkthrough) (01–15, 17–19)
   - [Common Workflows](#common-workflows)
   - [Troubleshooting](#troubleshooting)
 - [Part 2 — Implementation Details (for TAs)](#part-2--implementation-details-for-tas)
@@ -92,13 +92,13 @@ Only one process can use the serial port at a time.
 
 ## Script-by-Script Walkthrough
 
-All scripts live in `scripts/`. Always activate your environment and `cd scripts/`
+All scripts live in `magician/`. Always activate your environment and `cd magician/`
 before running them.
 
 ```bash
 mamba activate dobot
 # or: source .venv/bin/activate
-cd scripts
+cd magician
 ```
 
 ### 01 — Find the Serial Port
@@ -576,6 +576,55 @@ Values outside these bounds are clamped with a warning.
 
 ---
 
+### 19 — Body-Frame Relative Joint-Angle Control
+
+```bash
+python 19_relative_joint_control.py [--viz]
+```
+
+**What it does:** Extends script 18 with a *relative (body-frame)* input
+convention. Students enter J1–J4 as body-frame offsets (each joint measured
+from the previous link's direction), and the script converts them through the
+full FK transformation chain before moving the robot.
+
+**Why the distinction matters:** In script 18, J3 is entered as a firmware
+angle that happens to be a body-frame offset for the Magician, but J4 must be
+an absolute wrist angle. Script 19 makes all inputs consistently body-frame and
+performs the conversion explicitly, so students see the chain that the firmware
+would otherwise hide.
+
+**Terminal output per move:**
+
+```
+Relative:  J1_rel=   0.00  J2_rel=  20.00  J3_rel=  10.00  J4_rel=   0.00
+Absolute:  j1_abs=   0.00  j2_abs=  20.00  j3_abs=  30.00  j4_abs=  30.00
+Firmware:  j1_fw=    0.00  j2_fw=   20.00  j3_fw=   10.00  j4_fw=   30.00
+[FK]       X= 254.17  Y=   0.00  Z= 119.72  R= 30.00
+```
+
+**Conversion functions:**
+
+```python
+def rel_to_abs_magician(j1_r, j2_r, j3_r, j4_r):
+    j3_abs = j2_r + j3_r           # accumulated elbow angle
+    j4_abs = j3_abs + j4_r         # accumulated wrist angle
+    fw_tuple  = (j1_r, j2_r, j3_r, j4_abs)    # j3_fw = j3_rel (trivial)
+    abs_tuple = (j1_r, j2_r, j3_abs, j4_abs)
+    return fw_tuple, abs_tuple
+
+def fw_to_rel_magician(j1_fw, j2_fw, j3_fw, j4_fw):
+    return j1_fw, j2_fw, j3_fw, j4_fw - (j2_fw + j3_fw)
+```
+
+**Prompt** shows both Abs and Rel current state. **Bounds** are applied to
+firmware angles (`clamp_fw_joints()`), not to the relative inputs.
+
+**Options:**
+- `--viz` enables the `RobotViz` dual-view visualizer
+- Set `LOG_TO_CSV = True` for `joint_log_19.csv` (rel + abs + fw + FK + actual)
+
+---
+
 ## Common Workflows
 
 ### First-Time Setup (do once)
@@ -735,7 +784,7 @@ Call `check_alarms(bot)` after connecting to clear any limit alarms before motio
 ## Architecture Overview
 
 ```
-scripts/
+magician/
 ├── README.md             ← Script grouping: numbered labs vs support files
 ├── utils.py              ← Shared safety layer (all scripts import from here)
 ├── 01_find_port.py       ← Port discovery (standalone, no robot connection)
@@ -755,6 +804,7 @@ scripts/
 ├── 15_record_pose.py     ← Pose recorder with reconnect-per-capture workflow
 ├── 17_visualizer.py      ← Live pose monitor + RobotViz standalone demo
 ├── 18_joint_control.py   ← Interactive J1–J4 REPL: FK preview, MOVJ_ANGLE, CSV log
+├── 19_relative_joint_control.py ← Body-frame relative angle REPL: conversion chain, FK, viz
 ├── pyqtgraph_helpers.py  ← Shared QThread polling helper for standalone viz examples
 └── viz.py                ← RobotViz utility: dual-view 2D visualizer (spawn subprocess, PyQt5)
 
@@ -786,7 +836,7 @@ mg400/                    ← MG400 parallel workspace (TCP/IP, 440 mm reach)
 └── 12_feedback_monitor.py ← Live pose from port 30004 + viz
 
 vendor/
-├── dobot-python/         ← Track B SDK (Magician, for scripts/10_circle_queue.py)
+├── dobot-python/         ← Track B SDK (Magician, for magician/10_circle_queue.py)
 └── TCP-IP-4Axis-Python/  ← MG400 SDK (dobot_api.py + MyType numpy dtype)
 ```
 
@@ -958,14 +1008,15 @@ Disable the visualizer during development with `DOBOT_VIZ=0 python NN_descriptio
 - [`README.md`](./README.md) — workspace landing page and quick navigation
 - [`requirements.txt`](./requirements.txt) — pip dependencies (pydobotplus, pydobot, pyserial, pyqtgraph, PyQt5, numpy)
 - [`dobot_control_options_comparison.md`](./dobot_control_options_comparison.md) — hardware specs, library syntax, safety, motion modes
-- [`scripts/README.md`](./scripts/README.md) — numbered script sequence and support-file grouping
+- [`magician/README.md`](./magician/README.md) — numbered script sequence and support-file grouping
 - [`docs/`](./docs/) — API reference for pydobotplus, arc/circle math guides, safe_move pattern analysis, and motion modes reference
 - [`docs/README.md`](./docs/README.md) — canonical docs index
 - [`docs/motion_modes.md`](./docs/motion_modes.md) — Complete MODE_PTP table, MOVJ/MOVL/JUMP decision guide, JUMP configuration, alarm codes
 - [`docs/circle_drawing_index.md`](./docs/circle_drawing_index.md) — Start here for circle drawing: links to math guides, scripts, and worked examples
-- [`scripts/viz.py`](./scripts/viz.py) — `RobotViz` class: real-time dual-view 2D visualizer (disable with `DOBOT_VIZ=0` or `--no-viz`)
-- [`scripts/17_visualizer.py`](./scripts/17_visualizer.py) — standalone pose monitor; demonstrates `RobotViz` without motion
-- [`scripts/18_joint_control.py`](./scripts/18_joint_control.py) — interactive joint-angle REPL with FK display, clamping, and CSV logging
+- [`magician/viz.py`](./magician/viz.py) — `RobotViz` class: real-time dual-view 2D visualizer (disable with `DOBOT_VIZ=0` or `--no-viz`)
+- [`magician/17_visualizer.py`](./magician/17_visualizer.py) — standalone pose monitor; demonstrates `RobotViz` without motion
+- [`magician/18_joint_control.py`](./magician/18_joint_control.py) — interactive joint-angle REPL with FK display, clamping, and CSV logging
+- [`magician/19_relative_joint_control.py`](./magician/19_relative_joint_control.py) — body-frame relative angle REPL: prints conversion chain (Relative/Absolute/Firmware) + FK prediction
 
 ### DOBOT MG400 (TCP/IP)
 

@@ -17,7 +17,8 @@ Viz integration: attach to move_api so all MovJ/MovL calls auto-forward.
 For Arc/Circle the final endpoint is sent manually via viz.send().
 
 Usage:
-    python 09_arc_motion.py [--ip 192.168.1.6] [--no-viz]
+    python 09_arc_motion.py [--ip 192.168.2.9] [--viz]
+    python 09_arc_motion.py --robot 2 [--viz]
 """
 
 import argparse
@@ -32,6 +33,7 @@ from utils_mg400 import (
     safe_move,
     SPEED_DEFAULT,
     MG400_IP,
+    ROBOT_IPS,
 )
 from viz_mg400 import RobotViz
 
@@ -66,11 +68,14 @@ def draw_circle_sampled(move_api, viz, steps: int = 36) -> None:
 def main():
     parser = argparse.ArgumentParser(description="MG400 arc/circle motion demo")
     parser.add_argument("--ip", default=MG400_IP, help="MG400 IP address")
-    parser.add_argument("--no-viz", action="store_true", help="Disable visualizer")
+    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
+                        help="Robot number 1-4 (overrides --ip)")
+    parser.add_argument("--viz", action="store_true", help="Enable visualizer")
     args = parser.parse_args()
+    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
 
-    dashboard, move_api, feed = connect(args.ip)
-    viz = RobotViz(enabled=not args.no_viz)
+    dashboard, move_api, feed = connect(ip)
+    viz = RobotViz(enabled=args.viz)
     viz.attach(move_api)
 
     try:

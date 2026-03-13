@@ -13,7 +13,8 @@ The demo moves to the same waypoint at three speed levels so you can
 compare motion time and smoothness visually.
 
 Usage:
-    python 04_speed_control.py [--ip 192.168.1.6]
+    python 04_speed_control.py [--ip 192.168.2.9]
+    python 04_speed_control.py --robot 2
 """
 
 import argparse
@@ -26,6 +27,7 @@ from utils_mg400 import (
     go_home,
     safe_move,
     MG400_IP,
+    ROBOT_IPS,
 )
 
 # Target waypoint for all speed comparisons
@@ -55,9 +57,12 @@ def _set_speed(dashboard, s: dict) -> None:
 def main():
     parser = argparse.ArgumentParser(description="MG400 speed control demo")
     parser.add_argument("--ip", default=MG400_IP, help="MG400 IP address")
+    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
+                        help="Robot number 1-4 (overrides --ip)")
     args = parser.parse_args()
+    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
 
-    dashboard, move_api, feed = connect(args.ip)
+    dashboard, move_api, feed = connect(ip)
     try:
         check_errors(dashboard)
         dashboard.EnableRobot()

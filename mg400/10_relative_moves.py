@@ -19,7 +19,8 @@ Demos:
   4. Relative pick-and-place pattern using vertical RelMovL for Z
 
 Usage:
-    python 10_relative_moves.py [--ip 192.168.1.6] [--no-viz]
+    python 10_relative_moves.py [--ip 192.168.2.9] [--viz]
+    python 10_relative_moves.py --robot 2 [--viz]
 """
 
 import argparse
@@ -34,6 +35,7 @@ from utils_mg400 import (
     safe_rel_move,
     SPEED_DEFAULT,
     MG400_IP,
+    ROBOT_IPS,
 )
 from viz_mg400 import RobotViz
 
@@ -150,11 +152,14 @@ def demo_relative_pick_place(dashboard, move_api) -> None:
 def main():
     parser = argparse.ArgumentParser(description="MG400 relative moves demo")
     parser.add_argument("--ip", default=MG400_IP, help="MG400 IP address")
-    parser.add_argument("--no-viz", action="store_true", help="Disable visualizer")
+    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
+                        help="Robot number 1-4 (overrides --ip)")
+    parser.add_argument("--viz", action="store_true", help="Enable visualizer")
     args = parser.parse_args()
+    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
 
-    dashboard, move_api, feed = connect(args.ip)
-    viz = RobotViz(enabled=not args.no_viz)
+    dashboard, move_api, feed = connect(ip)
+    viz = RobotViz(enabled=args.viz)
     viz.attach(move_api)
 
     try:

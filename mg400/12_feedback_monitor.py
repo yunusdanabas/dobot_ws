@@ -15,7 +15,8 @@ Displays live X/Y/Z/R and robot_mode at the configured Hz, plus sends to viz.
 No motion commands — robot can be disabled (just reading state).
 
 Usage:
-    python 12_feedback_monitor.py [--ip 192.168.1.6] [--no-viz] [--hz 10]
+    python 12_feedback_monitor.py [--ip 192.168.2.9] [--viz] [--hz 10]
+    python 12_feedback_monitor.py --robot 2 [--viz]
 """
 
 import argparse
@@ -29,6 +30,7 @@ from utils_mg400 import (
     close_all,
     ROBOT_MODE,
     MG400_IP,
+    ROBOT_IPS,
 )
 from viz_mg400 import RobotViz
 
@@ -106,19 +108,22 @@ def _feed_thread(feed) -> None:
 def main():
     parser = argparse.ArgumentParser(description="MG400 live feedback monitor")
     parser.add_argument("--ip",    default=MG400_IP, help="MG400 IP address")
-    parser.add_argument("--no-viz", action="store_true", help="Disable visualizer")
+    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
+                        help="Robot number 1-4 (overrides --ip)")
+    parser.add_argument("--viz", action="store_true", help="Enable visualizer")
     parser.add_argument("--hz",    type=float, default=10.0,
                         help="Display/viz update rate in Hz (default 10)")
     args = parser.parse_args()
+    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
 
     interval = 1.0 / max(1.0, args.hz)
 
-    print(f"Connecting to MG400 at {args.ip} ...")
-    dashboard, move_api, feed = connect(args.ip)
+    print(f"Connecting to MG400 at {ip} ...")
+    dashboard, move_api, feed = connect(ip)
     print("  Connected: dashboard(29999), move(30003), feed(30004)")
     print("  Robot does NOT need to be enabled for pose monitoring.\n")
 
-    viz = RobotViz(enabled=not args.no_viz)
+    viz = RobotViz(enabled=args.viz)
 
     # Start binary feedback reader thread
     ft = threading.Thread(target=_feed_thread, args=(feed,), daemon=True)

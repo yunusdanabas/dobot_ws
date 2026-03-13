@@ -1,0 +1,13 @@
+# mg400/requirements.txt — minimal dependencies for MG400 student intro scripts
+#
+# Install with:
+#   pip install -r requirements.txt
+#
+# numpy — used internally by dobot_api.py (MyType numpy dtype for feedback packets)
+#
+# Note: dobot_api.py must be available via the SDK git clone:
+#   cd dobot_ws
+#   git clone https://github.com/Dobot-Arm/TCP-IP-4Axis-Python.git vendor/TCP-IP-4Axis-Python
+# See CLAUDE.md for full network setup instructions.
+
+numpy

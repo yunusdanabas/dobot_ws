@@ -15,7 +15,8 @@ Typical wiring:
 Edit I/O indices to match your hardware.
 
 Usage:
-    python 05_end_effectors.py [--ip 192.168.1.6]
+    python 05_end_effectors.py [--ip 192.168.2.9]
+    python 05_end_effectors.py --robot 2
 """
 
 import argparse
@@ -28,6 +29,7 @@ from utils_mg400 import (
     go_home,
     SPEED_DEFAULT,
     MG400_IP,
+    ROBOT_IPS,
 )
 
 # I/O index mapping — adjust to match your wiring
@@ -55,9 +57,12 @@ def _print_di(dashboard) -> None:
 def main():
     parser = argparse.ArgumentParser(description="MG400 end-effector I/O demo")
     parser.add_argument("--ip", default=MG400_IP, help="MG400 IP address")
+    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
+                        help="Robot number 1-4 (overrides --ip)")
     args = parser.parse_args()
+    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
 
-    dashboard, move_api, feed = connect(args.ip)
+    dashboard, move_api, feed = connect(ip)
     try:
         check_errors(dashboard)
         dashboard.EnableRobot()
@@ -87,7 +92,7 @@ def main():
 
         print("  Gripper OPEN ...")
         dashboard.ToolDO(GRIPPER_DO, 0)
-        time.sleep(0.8)
+        time.sleep(1.8)
 
         # --- Base digital output demo ---
         print("\n[Demo 3] Base digital output (DO index 1)")

@@ -15,7 +15,8 @@ MG400 joints:
   J4 = wrist rotation (-170° to +170°)
 
 Usage:
-    python 06_joint_angles.py [--ip 192.168.1.6]
+    python 06_joint_angles.py [--ip 192.168.2.9]
+    python 06_joint_angles.py --robot 2
 """
 
 import argparse
@@ -30,6 +31,7 @@ from utils_mg400 import (
     parse_angles,
     SPEED_DEFAULT,
     MG400_IP,
+    ROBOT_IPS,
 )
 
 # Joint-space waypoints (degrees): (J1, J2, J3, J4)
@@ -46,9 +48,12 @@ JOINT_WAYPOINTS = [
 def main():
     parser = argparse.ArgumentParser(description="MG400 joint angles demo")
     parser.add_argument("--ip", default=MG400_IP, help="MG400 IP address")
+    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
+                        help="Robot number 1-4 (overrides --ip)")
     args = parser.parse_args()
+    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
 
-    dashboard, move_api, feed = connect(args.ip)
+    dashboard, move_api, feed = connect(ip)
     try:
         check_errors(dashboard)
         dashboard.EnableRobot()

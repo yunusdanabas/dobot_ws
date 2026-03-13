@@ -11,7 +11,8 @@ Steps:
   7. Disable robot and close connections
 
 Usage:
-    python 02_first_connection.py [--ip 192.168.1.6]
+    python 02_first_connection.py [--ip 192.168.2.9]
+    python 02_first_connection.py --robot 2
 """
 
 import argparse
@@ -26,16 +27,20 @@ from utils_mg400 import (
     go_home,
     SPEED_DEFAULT,
     MG400_IP,
+    ROBOT_IPS,
 )
 
 
 def main():
     parser = argparse.ArgumentParser(description="MG400 first connection demo")
     parser.add_argument("--ip", default=MG400_IP, help="MG400 IP address")
+    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
+                        help="Robot number 1-4 (overrides --ip)")
     args = parser.parse_args()
+    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
 
-    print(f"Connecting to MG400 at {args.ip} ...")
-    dashboard, move_api, feed = connect(args.ip)
+    print(f"Connecting to MG400 at {ip} ...")
+    dashboard, move_api, feed = connect(ip)
     print("  Connected: dashboard(29999), move(30003), feed(30004)")
 
     try:
