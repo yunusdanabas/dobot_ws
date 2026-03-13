@@ -44,7 +44,6 @@ from utils_mg400 import (
     check_errors,
     go_home,
     parse_pose,
-    SPEED_DEFAULT,
     MG400_IP,
     ROBOT_IPS,
 )

@@ -102,6 +102,11 @@ Where:
 
 ## Learning Resources
 
+The links below point to the full workspace documentation. Those docs describe
+the full root tracks in `magician/` and `mg400/`; the intro-week copies in
+`Students/00_IntroductionWeek/` keep the same core concepts but omit some
+advanced helper options and extra tooling.
+
 | Topic | Resource |
 |-------|---------|
 | Full 18-script lab walkthrough | `GUIDE.md` in the full course workspace |

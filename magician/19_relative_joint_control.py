@@ -249,8 +249,9 @@ def main() -> None:
                 go_home(bot)
                 _, _, _, _, j1_fw, j2_fw, j3_fw, j4_fw = unpack_pose(bot.get_pose())
                 j1_r, j2_r, j3_r, j4_r = fw_to_rel_magician(j1_fw, j2_fw, j3_fw, j4_fw)
+                j3_abs = j2_fw + j3_fw
                 print(f"  Home     Abs: J1={j1_fw:.2f}  J2={j2_fw:.2f}"
-                      f"  J3={j3_fw:.2f}  J4={j4_fw:.2f}")
+                      f"  J3={j3_abs:.2f}  J4={j4_fw:.2f}")
                 print(f"           Rel: J1={j1_r:.2f}  J2={j2_r:.2f}"
                       f"  J3={j3_r:.2f}  J4={j4_r:.2f}")
                 continue

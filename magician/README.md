@@ -22,6 +22,7 @@ Run these in order:
 - `15_record_pose.py`
 - `17_visualizer.py`
 - `18_joint_control.py`
+- `19_relative_joint_control.py`
 
 Notes:
 - `16_*` is intentionally unused (legacy gap kept for course continuity).

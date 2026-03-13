@@ -38,7 +38,6 @@ Extension: set LOG_TO_CSV = True to write every move to a CSV file.
 
 import argparse
 import csv
-import sys
 import time
 
 from utils_mg400 import (

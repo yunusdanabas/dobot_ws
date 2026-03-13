@@ -23,12 +23,19 @@
 \definecolor{AxisBlue}{HTML}{1A5276}
 \definecolor{AxisGreen}{HTML}{1D8348}
 
-% ── Math ──────────────────────────────────────────────────────────────────────
+% ── Math & Units ──────────────────────────────────────────────────────────────
 \usepackage{amsmath}
+\usepackage{siunitx}
+\sisetup{
+  per-mode = symbol,
+  range-phrase = { to },
+  range-units = single,
+}
 
 % ── Tables ────────────────────────────────────────────────────────────────────
 \usepackage{booktabs}
 \usepackage{array}
+\usepackage{tabularx}
 \usepackage[table]{xcolor}
 
 % ── Code listings ─────────────────────────────────────────────────────────────
@@ -42,7 +49,8 @@
   stringstyle=\color{DimGray},
   numberstyle=\tiny\color{DimGray},
   backgroundcolor=\color{ToneGrayBg},
-  frame=none,
+  frame=single,
+  rulecolor=\color{ToneGrayFrame!20},
   breaklines=true,
   tabsize=4,
   showstringspaces=false,
@@ -53,13 +61,15 @@
   language=bash,
   basicstyle=\ttfamily\small,
   keywordstyle=\bfseries,
-  backgroundcolor=\color{ToneGrayBg},
-  frame=none,
+  backgroundcolor=\color{black!5},
+  frame=leftline,
+  framerule=2pt,
+  rulecolor=\color{ToneGrayFrame},
   numbers=none,
   breaklines=true,
   tabsize=4,
   showstringspaces=false,
-  xleftmargin=5pt,
+  xleftmargin=10pt,
 }
 
 % ── Modern Boxes (Accent Style) ───────────────────────────────────────────────
@@ -94,6 +104,13 @@
     colback=ToneBlueBg,
     colframe=ToneBlueFrame,
     coltitle=ToneBlueFrame,
+  },
+  outcomebox/.style={
+    accentbox,
+    colback=white,
+    colframe=MainBlack,
+    coltitle=MainBlack,
+    title={Lab Outcomes},
   },
 }
 
@@ -135,7 +152,7 @@
 \hypersetup{
   colorlinks=true,
   linkcolor=MainBlack,
-  urlcolor=MainBlack,
+  urlcolor=ToneBlueFrame,
   citecolor=MainBlack,
 }
 
@@ -157,32 +174,42 @@
   \rule{\linewidth}{1.5pt}
 \end{center}
 
-\vspace{10pt}
+\vspace{5pt}
+
+\begin{tcolorbox}[outcomebox]
+  By the end of this lab, you will be able to:
+  \begin{itemize}
+    \item Configure a Python environment for robotic control using Mamba or venv.
+    \item Establish and verify communication with both Magician (Serial) and MG400 (TCP/IP).
+    \item Understand the relationship between relative and absolute joint angles.
+    \item Manually calculate and verify Forward Kinematics (FK) for a 4-axis arm.
+  \end{itemize}
+\end{tcolorbox}
 
 % ──────────────────────────────────────────────────────────────────────────────
 \section{Overview}
 % ──────────────────────────────────────────────────────────────────────────────
 
-This lab session focuses on setting up your development environment and verifying the connection with your assigned robotic arm. The lab supports two robots: the \textbf{Dobot Magician} (USB-serial) and the \textbf{DOBOT MG400} (TCP/IP over Ethernet). Scripts are organized into separate folders — \texttt{magician/} and \texttt{mg400/} — depending on which robot you are using.
+This lab session focuses on setting up your development environment and verifying the connection with your assigned robotic arm. The lab supports two robots: the \textbf{Dobot Magician} (USB-serial) and the \textbf{DOBOT MG400} (TCP/IP over Ethernet). Scripts are organized into separate folders — \texttt{magician/} and \texttt{mg400/}.
 
 \subsection*{Included Scripts}
 
 \renewcommand{\arraystretch}{1.5}
-\begin{tabular}{@{}lp{10cm}@{}}
+\begin{tabularx}{\linewidth}{@{}lX@{}}
   \toprule
   \textbf{Script} & \textbf{Purpose} \\
   \midrule
   \multicolumn{2}{@{}l@{}}{\textit{Dobot Magician (\texttt{magician/})}} \\
   \texttt{01\_init\_check.py} & Verifies USB connection, clears alarms, and moves to safe ready pose. Run first. \\
   \texttt{02\_joint\_control.py} & Interactive REPL: enter joint angles in degrees to move joints. \\
-  \texttt{03\_relative\_joint\_control.py} & Body-frame FK exercise: enter relative joint angles, observe the conversion chain and FK prediction. \\
+  \texttt{03\_relative\_joint\_control.py} & Body-frame FK exercise: enter relative joint angles, observe the conversion chain. \\
   \midrule
   \multicolumn{2}{@{}l@{}}{\textit{DOBOT MG400 (\texttt{mg400/})}} \\
-  \texttt{01\_init\_check.py} & Verifies Ethernet connection, enables robot, moves to READY\_POSE. Run first. \\
+  \texttt{01\_init\_check.py} & Verifies Ethernet connection, enables robot, moves to \texttt{READY\_POSE}. \\
   \texttt{02\_joint\_control.py} & Interactive REPL: enter joint angles with FK preview and joint clamping. \\
-  \texttt{03\_relative\_joint\_control.py} & Body-frame FK exercise: enter relative joint angles, observe the conversion chain and FK prediction. \\
+  \texttt{03\_relative\_joint\_control.py} & Body-frame FK exercise: enter relative joint angles, observe conversion and prediction. \\
   \bottomrule
-\end{tabular}
+\end{tabularx}
 
 % ──────────────────────────────────────────────────────────────────────────────
 \section{Quick Start Guide}
@@ -244,9 +271,9 @@ python 01_init_check.py --robot 2
 \subsection{Dobot Magician (USB-serial)}
 
 \begin{enumerate}
-  \item \textbf{Surface:} Place on a flat, stable surface. Clear a 40\,cm radius around the base.
-  \item \textbf{Posture:} Manually set the arm to a neutral posture (both segments at $\approx$45$^\circ$) before powering on.
-  \item \textbf{Power:} Connect the 12V DC adapter. \textbf{USB power alone is insufficient.}
+  \item \textbf{Surface:} Place on a flat, stable surface. Clear a \qty{40}{\cm} radius around the base.
+  \item \textbf{Posture:} Manually set the arm to a neutral posture (both segments at $\approx$\qty{45}{\degree}) before powering on.
+  \item \textbf{Power:} Connect the \qty{12}{\V} DC adapter. \textbf{USB power alone is insufficient.}
   \item \textbf{Communication:} Connect the USB cable (CP210x USB-to-UART bridge).
 \end{enumerate}
 
@@ -260,16 +287,16 @@ python 01_init_check.py --robot 2
 \subsection{DOBOT MG400 (Ethernet/TCP-IP)}
 
 \begin{enumerate}
-  \item \textbf{Surface:} Place on a flat, stable surface. Clear a 50\,cm radius around the base (440\,mm reach).
+  \item \textbf{Surface:} Place on a flat, stable surface. Clear a \qty{50}{\cm} radius around the base (\qty{440}{\mm} reach).
   \item \textbf{Power:} Connect the DC power adapter. Wait for the status LED to turn solid green.
   \item \textbf{Network:} Connect an Ethernet cable from the robot to your PC.
   \item \textbf{PC Static IP:} Set your Ethernet adapter to \texttt{192.168.2.100}, netmask \texttt{255.255.255.0}.
-  \item \textbf{Verify:} \texttt{ping 192.168.2.9} — should respond with $<$1\,ms latency.
+  \item \textbf{Verify:} \texttt{ping 192.168.2.9} — should respond with $<$\qty{1}{\ms} latency.
 \end{enumerate}
 
 \textbf{Robot IP addresses (192.168.2.x subnet):}
 
-\begin{tabular}{@{}lll@{}}
+\begin{tabularx}{0.8\linewidth}{@{}llX@{}}
   \toprule
   \textbf{Robot} & \textbf{IP Address} & \textbf{CLI flag} \\
   \midrule
@@ -278,7 +305,7 @@ python 01_init_check.py --robot 2
   3 & 192.168.2.7  & \texttt{--robot 3} \\
   4 & 192.168.2.8  & \texttt{--robot 4} \\
   \bottomrule
-\end{tabular}
+\end{tabularx}
 
 % ──────────────────────────────────────────────────────────────────────────────
 \section{Software and OS Setup}
@@ -335,35 +362,35 @@ Modern macOS versions include the driver. The device will appear as:
   \item \textbf{\color{AxisRed}X-axis:} Forward (pointing away from base).
   \item \textbf{\color{AxisBlue}Y-axis:} Left/Right (Left is positive).
   \item \textbf{\color{AxisGreen}Z-axis:} Vertical (Up is positive).
-  \item \textbf{Units:} Millimeters (mm).
-  \item \textbf{Rotation (R):} Tool rotation in degrees.
+  \item \textbf{Units:} Millimeters (\si{\mm}).
+  \item \textbf{Rotation (R):} Tool rotation in degrees (\si{\degree}).
 \end{itemize}
 \end{minipage}
 
 \subsection{Joint Definitions and Safe Limits}
 
-\begin{tabular}{@{}llll@{}}
+\begin{tabularx}{\linewidth}{@{}llXl@{}}
   \toprule
   \textbf{Joint} & \textbf{Motion} & \textbf{Safe Range} & \textbf{Units} \\
   \midrule
-  J1 & Base Rotation & $\pm$90$^\circ$ & deg \\
-  J2 & Rear Arm Elevation & 0$^\circ$ to 85$^\circ$ & deg \\
-  J3 & Forearm Elevation & -10$^\circ$ to 85$^\circ$ & deg \\
-  J4 & End-Effector Rotation & $\pm$90$^\circ$ & deg \\
+  J1 & Base Rotation & \qtyrange{-90}{90}{\degree} & deg \\
+  J2 & Rear Arm Elevation & \qtyrange{0}{85}{\degree} & deg \\
+  J3 & Forearm Elevation & \qtyrange{-10}{85}{\degree} & deg \\
+  J4 & End-Effector Rotation & \qtyrange{-90}{90}{\degree} & deg \\
   \bottomrule
-\end{tabular}
+\end{tabularx}
 
 \vspace{10pt}
 
-\begin{tabular}{@{}lll@{}}
+\begin{tabularx}{\linewidth}{@{}lXl@{}}
   \toprule
   \textbf{Cartesian Dimension} & \textbf{Safe Operating Range} & \textbf{Unit} \\
   \midrule
-  X (Reach) & 120 to 315 & mm \\
-  Y (Slew)  & $\pm$158 & mm \\
-  Z (Height) & 5 to 155 & mm \\
+  X (Reach) & \qtyrange{120}{315}{\mm} & mm \\
+  Y (Slew)  & $\pm$\qty{158}{\mm} & mm \\
+  Z (Height) & \qtyrange{5}{155}{\mm} & mm \\
   \bottomrule
-\end{tabular}
+\end{tabularx}
 
 % ──────────────────────────────────────────────────────────────────────────────
 \section{DOBOT MG400 Reference (Ethernet/TCP-IP)}
@@ -373,32 +400,32 @@ Modern macOS versions include the driver. The device will appear as:
 
 The MG400 uses the same X/Y/Z/R convention as the Magician, but with different operating bounds:
 
-\begin{tabular}{@{}llll@{}}
+\begin{tabularx}{\linewidth}{@{}lXll@{}}
   \toprule
   \textbf{Axis} & \textbf{Safe Range} & \textbf{Unit} & \textbf{Note} \\
   \midrule
-  X (Reach)   & 60 to 400  & mm  & Inner limit $\approx$60\,mm (base singularity); max reach 440\,mm \\
-  Y (Slew)    & $\pm$220   & mm  & Symmetric full lateral sweep \\
-  Z (Height)  & 5 to 140   & mm  & \textbf{Z cannot go negative} — 0\,mm = mounting surface \\
-  R (Rotation) & $\pm$170  & deg & End-effector wrist rotation \\
+  X (Reach)   & \qtyrange{60}{400}{\mm}  & mm  & Inner limit $\approx$\qty{60}{\mm} (singularity) \\
+  Y (Slew)    & $\pm$\qty{220}{\mm}   & mm  & Symmetric full lateral sweep \\
+  Z (Height)  & \qtyrange{5}{140}{\mm}   & mm  & \textbf{Z cannot go negative} (0\,mm = surface) \\
+  R (Rotation) & $\pm$\qty{170}{\degree}  & deg & End-effector wrist rotation \\
   \bottomrule
-\end{tabular}
+\end{tabularx}
 
 \vspace{6pt}
 \textbf{READY\_POSE} = \texttt{(300, 0, 50, 0)} — safe home position above the surface.
 
 \subsection{Joint Definitions and Limits}
 
-\begin{tabular}{@{}llll@{}}
+\begin{tabularx}{\linewidth}{@{}llXl@{}}
   \toprule
   \textbf{Joint} & \textbf{Motion} & \textbf{Safe Range} & \textbf{Units} \\
   \midrule
-  J1 & Base Rotation      & $\pm$170$^\circ$              & deg \\
-  J2 & Shoulder Elevation & $-$5$^\circ$ to $+$90$^\circ$ & deg \\
-  J3 & Elbow              & $-$140$^\circ$ to $+$5$^\circ$ & deg \\
-  J4 & Wrist Rotation     & $\pm$170$^\circ$              & deg \\
+  J1 & Base Rotation      & $\pm$\qty{170}{\degree}              & deg \\
+  J2 & Shoulder Elevation & \qtyrange{-5}{90}{\degree} & deg \\
+  J3 & Elbow              & \qtyrange{-140}{5}{\degree} & deg \\
+  J4 & Wrist Rotation     & $\pm$\qty{170}{\degree}              & deg \\
   \bottomrule
-\end{tabular}
+\end{tabularx}
 
 % ──────────────────────────────────────────────────────────────────────────────
 \section{Forward Kinematics Exercise (Script 03)}
@@ -414,7 +441,7 @@ chain visible in the terminal output.
 Each joint angle can be measured from two different reference directions:
 \begin{center}
 \renewcommand{\arraystretch}{1.4}
-\begin{tabular}{@{}llll@{}}
+\begin{tabularx}{0.95\linewidth}{@{}lXX@{}}
   \toprule
   \textbf{Joint} & \textbf{Relative (body-frame)} & \textbf{Absolute (world-frame)} \\
   \midrule
@@ -423,10 +450,10 @@ Each joint angle can be measured from two different reference directions:
   J3 & Elbow offset \textit{from the upper arm} & $= \mathrm{J2} + \mathrm{J3_{rel}}$ \\
   J4 & Wrist offset \textit{from the forearm}   & $= \mathrm{J3_{abs}} + \mathrm{J4_{rel}}$ \\
   \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{center}
 J1 and J2 are identical in both conventions.  J3 and J4 are where they differ:
-a relative J3 of $10^\circ$ means the forearm is $10^\circ$ above the upper arm,
+a relative J3 of \qty{10}{\degree} means the forearm is \qty{10}{\degree} above the upper arm,
 regardless of how high the shoulder is.
 \end{tcolorbox}
 
@@ -452,24 +479,24 @@ and $j_{4,\text{fw}} = j_{4,\text{abs}}$.
 
 Input: \texttt{0 20 10 0} (all relative)
 
-\begin{tabular}{@{}ll@{}}
+\begin{tabularx}{\linewidth}{@{}lX@{}}
   \toprule
   \textbf{Step} & \textbf{Value} \\
   \midrule
-  $j_{3,\text{abs}}$ & $= 20^\circ + 10^\circ = 30^\circ$ \\
-  $j_{4,\text{abs}}$ & $= 30^\circ + 0^\circ  = 30^\circ$ \\
-  $j_{3,\text{fw}}$  & $= 10^\circ$ (trivial for Magician) \\
-  $j_{4,\text{fw}}$  & $= 30^\circ$ (= $j_{4,\text{abs}}$) \\
-  FK reach           & $= 135\cos(20^\circ)+147\cos(30^\circ) \approx 254$\,mm \\
-  FK height          & $= 135\sin(20^\circ)+147\sin(30^\circ) \approx 120$\,mm \\
+  $j_{3,\text{abs}}$ & $= \qty{20}{\degree} + \qty{10}{\degree} = \qty{30}{\degree}$ \\
+  $j_{4,\text{abs}}$ & $= \qty{30}{\degree} + \qty{0}{\degree}  = \qty{30}{\degree}$ \\
+  $j_{3,\text{fw}}$  & $= \qty{10}{\degree}$ (trivial for Magician) \\
+  $j_{4,\text{fw}}$  & $= \qty{30}{\degree}$ (= $j_{4,\text{abs}}$) \\
+  FK reach           & $= 135\cos(\qty{20}{\degree})+147\cos(\qty{30}{\degree}) \approx \qty{254}{\mm}$ \\
+  FK height          & $= 135\sin(\qty{20}{\degree})+147\sin(\qty{30}{\degree}) \approx \qty{120}{\mm}$ \\
   \bottomrule
-\end{tabular}
+\end{tabularx}
 
 \begin{tcolorbox}[safetybox, title={Safety Note}]
 Joint bounds are always applied to the \textbf{firmware angles} (absolute),
-not the relative inputs.  Entering $j_{3,\text{rel}} = 10^\circ$ when
-$j_{2,\text{rel}} = 80^\circ$ would produce $j_{3,\text{abs}} = 90^\circ$,
-which exceeds the J3 firmware bound of $85^\circ$ and will be clamped with a
+not the relative inputs.  Entering $j_{3,\text{rel}} = \qty{10}{\degree}$ when
+$j_{2,\text{rel}} = \qty{80}{\degree}$ would produce $j_{3,\text{abs}} = \qty{90}{\degree}$,
+which exceeds the J3 firmware bound of \qty{85}{\degree} and will be clamped with a
 warning before the move executes.
 \end{tcolorbox}
 
@@ -495,9 +522,6 @@ Rel: J1=  0.00  J2= 20.00  J3= 10.00  J4=  0.00
   Absolute:  j1_abs=   0.00  j2_abs=  20.00  j3_abs=  30.00  j4_abs=  30.00
   Firmware:  j1_fw=    0.00  j2_fw=   20.00  j3_fw=   10.00  j4_fw=   30.00
   [FK]       X= 254.17  Y=   0.00  Z= 119.72  R= 30.00
-  [Move]     J1=  0.00  J2= 20.00  J3= 10.00  J4= 30.00
-  Done.      J1=  0.00  J2= 20.00  J3= 10.00  J4= 30.00
-             X= 253.90  Y=   0.00  Z= 119.50
 \end{lstlisting}
 
 \textbf{Challenge:} before running the script, calculate the expected X, Y, Z
@@ -512,32 +536,32 @@ line in the terminal.
 
 \begin{tcolorbox}[infobox, title={Magician: Common Connection Issues}]
 \rowcolors{2}{white}{ToneBlueBg}
-\begin{tabular}{@{}p{5cm}p{10cm}@{}}
+\begin{tabularx}{\linewidth}{@{}lX@{}}
   \toprule
   \textbf{Symptom} & \textbf{Recommended Action} \\
   \midrule
-  \texttt{Access Denied} or \texttt{Port Busy} & Ensure \textbf{DobotStudio} and all other Python scripts are closed. Only one process can own the serial port. \\
-  \texttt{Device not found} & Verify both USB and Power cables. Check Device Manager (Win) or \texttt{ls /dev/tty*} (Unix). \\
-  Motors don't move & Check the 12V power supply. If the light is red, run \texttt{01\_init\_check.py} to clear alarms. \\
+  \texttt{Access Denied} & Ensure \textbf{DobotStudio} and other Python scripts are closed. \\
+  \texttt{Device not found} & Verify both USB and Power cables. Check \texttt{ls /dev/tty*} (Unix). \\
+  Motors don't move & Check the \qty{12}{\V} supply. If light is red, run \texttt{01\_init\_check.py}. \\
   Erratic movement & Reset to neutral posture and power cycle the robot. \\
   \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{tcolorbox}
 
 \subsection{DOBOT MG400}
 
 \begin{tcolorbox}[infobox, title={MG400: Common Issues}]
 \rowcolors{2}{white}{ToneBlueBg}
-\begin{tabular}{@{}p{5cm}p{10cm}@{}}
+\begin{tabularx}{\linewidth}{@{}lX@{}}
   \toprule
   \textbf{Symptom} & \textbf{Recommended Action} \\
   \midrule
-  \texttt{dobot\_api.py not found} & Clone the SDK: \texttt{git clone .../TCP-IP-4Axis-Python.git vendor/TCP-IP-4Axis-Python} \\
-  \texttt{Connection refused} & Check Ethernet cable, verify PC IP is 192.168.2.100, ping the robot IP. \\
-  Robot in ERROR mode & Run \texttt{check\_errors(dashboard)} — if uncleared, press E-stop, release, power-cycle. \\
-  Z motion stops early & MG400 Z cannot go negative. Ensure all targets have $Z \geq 5$\,mm. \\
+  \texttt{dobot\_api.py} missing & Clone the SDK into \texttt{vendor/TCP-IP-4Axis-Python}. \\
+  \texttt{Connection refused} & Check Ethernet cable, verify PC IP is \texttt{192.168.2.100}, ping robot. \\
+  Robot in ERROR mode & Run \texttt{check\_errors(dashboard)} or press E-stop, release, power-cycle. \\
+  Z motion stops early & MG400 Z cannot go negative. Ensure all targets have $Z \geq \qty{5}{\mm}$. \\
   \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{tcolorbox}
 
 % ──────────────────────────────────────────────────────────────────────────────
@@ -546,11 +570,11 @@ line in the terminal.
 
 \begin{tcolorbox}[safetybox, title={Mandatory Safety Rules (Both Robots)}]
 \begin{enumerate}
-  \item \textbf{Workspace:} Maintain a clean area. No cables or personal items in the reach zone (40\,cm for Magician; 50\,cm for MG400).
+  \item \textbf{Workspace:} Maintain a clean area. No cables in the reach zone (\qty{40}{\cm} for Magician; \qty{50}{\cm} for MG400).
   \item \textbf{Initialization:} Always run \texttt{01\_init\_check.py} before starting your own scripts.
-  \item \textbf{Helper Functions:} Use \texttt{safe\_move()} from \texttt{utils.py} / \texttt{utils\_mg400.py}. It enforces software limits to prevent physical damage.
-  \item \textbf{Supervision:} Stay within reach of the power cable (or E-stop for MG400) for immediate emergency disconnection.
-  \item \textbf{MG400 only:} Z cannot go negative ($Z \geq 5$\,mm). Never command the tool below the mounting surface.
+  \item \textbf{Helper Functions:} Use \texttt{safe\_move()} from \texttt{utils.py}. It enforces software limits.
+  \item \textbf{Supervision:} Stay within reach of the power cable (or E-stop for MG400).
+  \item \textbf{MG400 only:} Z cannot go negative ($Z \geq \qty{5}{\mm}$). Never command below surface.
 \end{enumerate}
 \end{tcolorbox}
 

@@ -4,6 +4,10 @@ This document explains the structural and API-level differences between the Magi
 (`magician/`) and MG400 (`mg400/`) code, so you understand why the same lab task
 looks different depending on which robot you are using.
 
+It compares the full root tracks. The intro-week copies under
+`Students/00_IntroductionWeek/` are trimmed teaching versions and omit some
+advanced options such as visualization flags, CSV logging, and feedback helpers.
+
 ---
 
 ## 1. Physical Connection

@@ -26,7 +26,6 @@ Extension: set LOG_TO_CSV = True to write every move to a CSV file.
 
 import argparse
 import csv
-import sys
 import time
 
 from utils_mg400 import (
@@ -142,7 +141,7 @@ def main():
         print("          h              go to home (READY_POSE)")
         print("          q              quit")
         print()
-        print(f"  Joint bounds:")
+        print("  Joint bounds:")
         for jname, (lo, hi) in JOINT_BOUNDS.items():
             print(f"    {jname.upper()}  {lo:7.1f}° … {hi:6.1f}°")
         print()

@@ -17,7 +17,6 @@ Usage:
 """
 
 import argparse
-import sys
 import threading
 import time
 
@@ -26,7 +25,6 @@ from utils_mg400 import (
     clamp,
     close_all_robots,
     connect_multi,
-    go_home,
     parse_angles,
     parse_pose,
     READY_POSE,

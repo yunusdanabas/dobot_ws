@@ -1,6 +1,7 @@
 # Dobot Magician — Student Quick-Start
 
-This folder contains everything you need to connect to the robot and run your first programs.
+This quick-start accompanies the simplified Magician intro scripts in
+`../magician/`. These files are a teaching subset of the full workspace.
 
 ---
 
@@ -11,8 +12,8 @@ This folder contains everything you need to connect to the robot and run your fi
 mamba activate dobot         # or: source .venv/bin/activate  (Linux/macOS)
                              #     .venv\Scripts\activate      (Windows)
 
-# 2. Install dependencies
-cd 00_IntroductionWeek
+# 2. Install dependencies for the Magician intro track
+cd Students/00_IntroductionWeek/magician
 pip install -r requirements.txt
 
 # 3. Run the initialization check
@@ -29,8 +30,10 @@ If the script exits cleanly and prints `[OK] Initialization complete.`, your set
 |--------|-------------|----------------|
 | `01_init_check.py` | Discovers the serial port, connects, moves to home, prints X/Y/Z and joint angles | Verify hardware + software setup |
 | `02_joint_control.py` | Interactive REPL: type four joint angles to move the arm | Forward kinematics, joint space vs Cartesian space |
+| `03_relative_joint_control.py` | Interactive REPL: type body-frame relative joint angles | Relative vs absolute joint angles, FK conversion chain |
 
 See [RESOURCES.md](RESOURCES.md) for Dobot specs, coordinate system explanation, and official links.
+For the MG400 intro subset, see `../mg400/`.
 
 ---
 
@@ -125,7 +128,8 @@ Close DobotStudio before running any script.
 
 ## Next Steps
 
-Once `01_init_check.py` works, continue to `02_joint_control.py` for interactive joint control.
+Once `01_init_check.py` works, continue to `02_joint_control.py`, then
+`03_relative_joint_control.py`.
 
 For the full 18-script lab walkthrough, hardware details, and TA implementation notes see:
 `GUIDE.md` in the full course workspace

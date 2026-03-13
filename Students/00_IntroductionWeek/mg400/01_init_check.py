@@ -21,7 +21,6 @@ Prerequisites:
 """
 
 import argparse
-import sys
 import time
 
 from utils_mg400 import (
@@ -87,7 +86,7 @@ def main() -> None:
         go_home(move_api)
 
         # [2/3] Confirm via safe_move (demonstrates clamping safety layer)
-        print(f"\n[2/3] Confirming position with safe_move ...")
+        print("\n[2/3] Confirming position with safe_move ...")
         safe_move(move_api, *READY_POSE)
         move_api.Sync()
 

@@ -10,6 +10,7 @@ Run this first to verify that your hardware and software setup is working.
 Usage:
     python 01_init_check.py
 """
+# Prepared by Yunus Emre Danabas for ME403
 
 import sys
 
@@ -39,7 +40,7 @@ def main() -> None:
         print("[Error] No serial port found.")
         print("  Check: USB cable connected, wall adapter plugged in,")
         print("  DobotStudio closed, dialout group on Linux (re-login required).")
-        print("  For more detail run: python ../scripts/01_find_port.py")
+        print("  For more detail run: python ../../magician/01_find_port.py")
         sys.exit(1)
 
     print(f"Connecting on {port} ...")

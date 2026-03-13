@@ -11,7 +11,7 @@ Key insight:
   - For a full circle: minimum 4 arcs (90° each); 8 arcs (45° each) is smoother
 
 Run with:
-    python scripts/11_circle_arcs.py
+    python 11_circle_arcs.py
 """
 
 import math
@@ -84,7 +84,7 @@ def draw_circle_arcs(bot, center_x, center_y, z, radius, num_arcs=4, rot=0):
         )
         time.sleep(0.1)
     
-    print(f"     Circle complete.")
+    print("     Circle complete.")
 
 
 def demo():

@@ -8,8 +8,8 @@ Supports two robots:
 
 ## Start Here
 
-- Student walkthrough: `GUIDE.md`
-- Student intro materials: `Students/00_IntroductionWeek/`
+- Full walkthrough for the root script sets: `GUIDE.md`
+- Student intro subset: `Students/00_IntroductionWeek/README.md`
 - Dependencies: `requirements.txt`
 
 ## Repo Layout
@@ -18,7 +18,7 @@ Supports two robots:
 |---|---|
 | `magician/` | Dobot Magician scripts 01–19 + shared helpers (`utils.py`, `viz.py`) |
 | `mg400/` | MG400 scripts 01–16 + shared helpers (`utils_mg400.py`, `viz_mg400.py`) |
-| `Students/` | Student-facing starter scripts and lab handout |
+| `Students/` | Simplified intro-week subsets for Magician and MG400, plus report materials |
 | `vendor/` | External SDK trees (auto-discovered by scripts) |
 | `GUIDE.md` | Script-by-script walkthrough + TA implementation details |
 | `magician_vs_mg400.md` | Side-by-side code comparison: Magician vs MG400 |

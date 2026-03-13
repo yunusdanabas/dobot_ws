@@ -10,6 +10,7 @@ Usage:
 from serial.tools import list_ports
 from utils import find_port, DOBOT_KEYWORDS
 
+
 def main():
     ports = list(list_ports.comports())
 
@@ -20,7 +21,9 @@ def main():
     print(f"{'Device':<20} {'Description':<40} {'HWID'}")
     print("-" * 90)
 
-    desc_hwid = lambda p: f"{(p.description or '')} {p.hwid}".lower()
+    def desc_hwid(port) -> str:
+        return f"{(port.description or '')} {port.hwid}".lower()
+
     for p in ports:
         is_dobot = any(kw.lower() in desc_hwid(p) for kw in DOBOT_KEYWORDS)
         marker = "  <-- DOBOT" if is_dobot else ""

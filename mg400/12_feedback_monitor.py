@@ -28,7 +28,6 @@ import numpy as np
 from utils_mg400 import (
     connect,
     close_all,
-    ROBOT_MODE,
     MG400_IP,
     ROBOT_IPS,
 )
@@ -163,7 +162,6 @@ def main():
                 valid = _feed_data["valid"]
 
             if valid:
-                mode_name = ROBOT_MODE.get(mode, f"?({mode})") if mode is not None else "---"
                 state = ("ERROR " if err else "") + ("ENABLED" if ena else "disabled")
                 viz.send(x, y, z, r)
                 print(

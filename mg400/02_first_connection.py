@@ -16,7 +16,6 @@ Usage:
 """
 
 import argparse
-import sys
 
 from utils_mg400 import (
     connect,
@@ -59,13 +58,13 @@ def main():
         # 4. Read Cartesian pose
         pose_resp = dashboard.GetPose()
         x, y, z, r = parse_pose(pose_resp)
-        print(f"\nCurrent Cartesian pose:")
+        print("\nCurrent Cartesian pose:")
         print(f"  X={x:.2f} mm  Y={y:.2f} mm  Z={z:.2f} mm  R={r:.2f} deg")
 
         # 5. Read joint angles
         angle_resp = dashboard.GetAngle()
         j1, j2, j3, j4 = parse_angles(angle_resp)
-        print(f"\nCurrent joint angles:")
+        print("\nCurrent joint angles:")
         print(f"  J1={j1:.2f}°  J2={j2:.2f}°  J3={j3:.2f}°  J4={j4:.2f}°")
 
         # 6. Move to home (READY_POSE)

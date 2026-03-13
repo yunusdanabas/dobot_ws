@@ -25,7 +25,6 @@ from utils_mg400 import (
     SPEED_DEFAULT,
     MG400_IP,
     ROBOT_IPS,
-    READY_POSE,
 )
 
 # ---------------------------------------------------------------------------

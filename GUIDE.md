@@ -4,6 +4,10 @@ A practical guide for using the Python control scripts in this workspace.
 Part 1 walks students through each script step by step.
 Part 2 covers implementation details for TAs and anyone extending the code.
 
+This guide covers the full-featured root tracks in [`magician/`](./magician/) and
+[`mg400/`](./mg400/). The simplified intro-week copies live in
+[`Students/00_IntroductionWeek/README.md`](./Students/00_IntroductionWeek/README.md).
+
 > **Prerequisites** — Python 3.10+, a USB cable, and the Dobot's wall-power adapter.
 
 ---
@@ -1006,10 +1010,11 @@ Disable the visualizer during development with `DOBOT_VIZ=0 python NN_descriptio
 ### Dobot Magician (USB-serial)
 
 - [`README.md`](./README.md) — workspace landing page and quick navigation
+- [`Students/00_IntroductionWeek/README.md`](./Students/00_IntroductionWeek/README.md) — simplified intro-week index for the student copies
 - [`requirements.txt`](./requirements.txt) — pip dependencies (pydobotplus, pydobot, pyserial, pyqtgraph, PyQt5, numpy)
 - [`dobot_control_options_comparison.md`](./dobot_control_options_comparison.md) — hardware specs, library syntax, safety, motion modes
 - [`magician/README.md`](./magician/README.md) — numbered script sequence and support-file grouping
-- [`docs/`](./docs/) — API reference for pydobotplus, arc/circle math guides, safe_move pattern analysis, and motion modes reference
+- [`docs/`](./docs/) — canonical docs for the full root tracks; the intro-week copies intentionally expose a smaller helper/API surface
 - [`docs/README.md`](./docs/README.md) — canonical docs index
 - [`docs/motion_modes.md`](./docs/motion_modes.md) — Complete MODE_PTP table, MOVJ/MOVL/JUMP decision guide, JUMP configuration, alarm codes
 - [`docs/circle_drawing_index.md`](./docs/circle_drawing_index.md) — Start here for circle drawing: links to math guides, scripts, and worked examples

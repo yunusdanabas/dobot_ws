@@ -32,7 +32,6 @@ Usage:
 """
 
 import argparse
-import sys
 import time
 
 from utils_mg400 import (

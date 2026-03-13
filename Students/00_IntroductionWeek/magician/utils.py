@@ -1,5 +1,6 @@
 """
 utils.py — Shared helpers for Dobot Magician lab scripts (ME403).
+Prepared by Yunus Emre Danabas for ME403.
 
 Import in any script:
     from utils import (
@@ -8,10 +9,9 @@ Import in any script:
         HOME_JOINTS, SAFE_READY_POSE, SAFE_BOUNDS, DOBOT_KEYWORDS, find_port
     )
 
-This module also applies _patch_pydobotplus() at import time, which fixes two
-upstream bugs in pydobotplus.Dobot.move_to: an unconditional get_pose() serial
-round-trip (~20-50 ms) and an unconditional print(current_pose) that would
-otherwise appear on every move command.  The patch is transparent to callers.
+This module also applies _patch_pydobotplus() at import time. The patch removes
+an unnecessary get_pose() round-trip and a noisy print() in the upstream
+move_to() implementation.
 """
 
 import time
@@ -50,7 +50,9 @@ def find_port(keywords: tuple[str, ...] = DOBOT_KEYWORDS) -> str | None:
     Returns None if no ports are found at all.
     """
     ports = list(list_ports.comports())
-    desc_hwid = lambda p: f"{(p.description or '')} {p.hwid}".lower()
+    def desc_hwid(port) -> str:
+        return f"{(port.description or '')} {port.hwid}".lower()
+
     for p in ports:
         combined = desc_hwid(p)
         if any(kw.lower() in combined for kw in keywords):

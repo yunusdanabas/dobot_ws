@@ -16,6 +16,7 @@ Joint limits (safe bounds):
 Usage:
     python 02_joint_control.py
 """
+# Prepared by Yunus Emre Danabas for ME403
 
 import sys
 from pydobotplus import Dobot
