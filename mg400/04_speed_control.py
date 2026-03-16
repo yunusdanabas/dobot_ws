@@ -13,7 +13,7 @@ The demo moves to the same waypoint at three speed levels so you can
 compare motion time and smoothness visually.
 
 Usage:
-    python 04_speed_control.py [--ip 192.168.2.9]
+    python 04_speed_control.py [--ip 192.168.2.7]
     python 04_speed_control.py --robot 2
 """
 

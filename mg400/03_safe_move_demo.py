@@ -9,7 +9,7 @@ Shows:
 Edit WAYPOINTS to match your lab setup.
 
 Usage:
-    python 03_safe_move_demo.py [--ip 192.168.2.9]
+    python 03_safe_move_demo.py [--ip 192.168.2.7]
     python 03_safe_move_demo.py --robot 2
 """
 

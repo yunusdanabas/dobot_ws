@@ -6,11 +6,11 @@ Cartesian pose is shown via dashboard.PositiveSolution() (FK). After the
 move the actual pose is read back so students can compare FK prediction vs
 reality.
 
-MG400 joint ranges:
-  J1  base rotation    -170° … +170°
-  J2  shoulder         -  5° … + 90°
-  J3  elbow            -140° … +  5°
-  J4  wrist rotation   -170° … +170°
+MG400 joint ranges (per DT-MG400-4R075-01 hardware guide V1.1):
+  J1  base rotation    -160° … +160°
+  J2  shoulder         - 25° … + 85°
+  J3  elbow            - 25° … +105°  (firmware absolute = j2 + j3_rel)
+  J4  wrist rotation   -180° … +180°
 
 Commands at the REPL prompt:
   j1 j2 j3 j4   move to these joint angles (degrees, space-separated)
@@ -49,12 +49,12 @@ from viz_mg400 import RobotViz
 LOG_TO_CSV = False
 CSV_FILE   = "joint_log_14.csv"
 
-# Safe joint-angle bounds (degrees) — conservative margins inside hardware limits
+# Joint-angle bounds (degrees) per DT-MG400-4R075-01 hardware guide V1.1
 JOINT_BOUNDS = {
-    "j1": (-170.0, 170.0),
-    "j2": (  -5.0,  90.0),
-    "j3": (-140.0,   5.0),
-    "j4": (-170.0, 170.0),
+    "j1": (-160.0, 160.0),   # ±160° per hardware guide
+    "j2": ( -25.0,  85.0),   # -25° ~ +85° per hardware guide
+    "j3": ( -25.0, 105.0),   # -25° ~ +105° per hardware guide (firmware absolute = j2+j3_rel)
+    "j4": (-180.0, 180.0),   # ±180° per hardware guide
 }
 
 # ---------------------------------------------------------------------------

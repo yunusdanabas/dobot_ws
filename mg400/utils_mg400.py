@@ -18,19 +18,25 @@ One-time SDK setup:
         /path/to/dobot_ws/vendor/TCP-IP-4Axis-Python
 
 Network setup (one-time): set PC Ethernet to static 192.168.2.100/24.
-Verify:  ping 192.168.2.9
+Verify:  ping 192.168.2.7
 
 Robot IP map (192.168.2.x subnet):
-  Robot 1 → 192.168.2.9
+  Robot 1 → 192.168.2.7
   Robot 2 → 192.168.2.10
-  Robot 3 → 192.168.2.7
-  Robot 4 → 192.168.2.8
+  Robot 3 → 192.168.2.9
+  Robot 4 → 192.168.2.6
 
 MG400 coordinate notes (verified from Dobot hardware spec v1.1):
   - X: 0–440 mm  (safe inner limit ≈60 mm due to base singularity)
   - Y: ±220 mm   (symmetric around centre)
   - Z: 0–150 mm  (Z CANNOT go negative — 0 mm = mounting surface)
-  - R: ±170°     (end-effector rotation)
+  - R: ±170°     (end-effector rotation; 10° safety margin inside J4 hardware limit of ±180°)
+
+Joint ranges (per DT-MG400-4R075-01 hardware guide V1.1, Table 2.1):
+  - J1: ±160°    (base rotation)
+  - J2: -25° ~ +85°   (shoulder elevation from horizontal)
+  - J3: -25° ~ +105°  (firmware absolute = j2 + j3_rel; factory home = 60°)
+  - J4: ±180°    (wrist rotation)
 """
 
 from __future__ import annotations
@@ -75,10 +81,10 @@ from dobot_api import DobotApiDashboard, DobotApiMove, DobotApi, MyType  # noqa:
 # ---------------------------------------------------------------------------
 
 ROBOT_IPS = {
-    1: "192.168.2.9",
+    1: "192.168.2.7",
     2: "192.168.2.10",
-    3: "192.168.2.7",
-    4: "192.168.2.8",
+    3: "192.168.2.9",
+    4: "192.168.2.6",
 }
 MG400_IP       = ROBOT_IPS[1]   # default: Robot 1
 DASHBOARD_PORT = 29999
@@ -91,7 +97,7 @@ SAFE_BOUNDS = {
     "x": (60,   400),   # inner: base singularity ≥60 mm; outer: ≤440 mm reach
     "y": (-220, 220),   # full lateral sweep
     "z": (5,    140),   # 5 mm above surface; 10 mm below firmware ceiling
-    "r": (-170, 170),   # full wrist rotation with 10° margin
+    "r": (-170, 170),   # 10° safety margin inside J4 hardware limit of ±180°
 }
 
 # Narrower bounds for in-class demos — stays comfortably inside workspace
@@ -191,9 +197,14 @@ def parse_pose(response: str) -> tuple[float, float, float, float]:
     nums = re.findall(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", response)
     floats = [float(n) for n in nums]
     if len(floats) >= 5:
-        # Skip error code at index 0; take x,y,z,r (indices 1,2,3,4)
+        # SDK responses include return code first: 0 means success.
+        status = int(floats[0])
+        if status != 0:
+            raise ValueError(f"GetPose returned status {status}: {response!r}")
+        # Skip return code; take x,y,z,r (indices 1,2,3,4)
         return floats[1], floats[2], floats[3], floats[4]
     if len(floats) == 4:
+        # Legacy/fallback format without a leading status code.
         return floats[0], floats[1], floats[2], floats[3]
     raise ValueError(f"Cannot parse pose from: {response!r}")
 
@@ -206,18 +217,60 @@ def parse_angles(response: str) -> tuple[float, float, float, float]:
     nums = re.findall(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", response)
     floats = [float(n) for n in nums]
     if len(floats) >= 5:
+        status = int(floats[0])
+        if status != 0:
+            raise ValueError(f"GetAngle returned status {status}: {response!r}")
         return floats[1], floats[2], floats[3], floats[4]
     if len(floats) == 4:
+        # Legacy/fallback format without a leading status code.
         return floats[0], floats[1], floats[2], floats[3]
     raise ValueError(f"Cannot parse angles from: {response!r}")
 
 
 def parse_robot_mode(response: str) -> int:
     """Parse RobotMode() response → integer mode code."""
-    nums = re.findall(r"\d+", response)
-    if nums:
-        return int(nums[-1])
-    raise ValueError(f"Cannot parse robot mode from: {response!r}")
+    nums = [int(n) for n in re.findall(r"[-+]?\d+", response)]
+    if not nums:
+        raise ValueError(f"Cannot parse robot mode from: {response!r}")
+
+    if len(nums) >= 2 and nums[0] in (0, -1):
+        status = nums[0]
+        if status != 0:
+            raise ValueError(f"RobotMode returned status {status}: {response!r}")
+        mode = nums[1]
+    elif len(nums) == 1:
+        # Fallback for response styles that return mode directly.
+        mode = nums[0]
+    else:
+        mode = nums[-1]
+
+    if mode not in ROBOT_MODE:
+        raise ValueError(f"RobotMode payload missing/invalid in: {response!r}")
+    return mode
+
+
+def parse_error_ids(response: str) -> list[int]:
+    """Parse GetErrorID() response → list[int] of non-zero error IDs.
+
+    Valid empty-alarm payloads still include a bracketed matrix, e.g.
+    "0,{[[],[],...]} ,GetErrorID();". Echo-only payloads like "GetErrorID()"
+    or "0,{},GetErrorID();" are treated as malformed.
+    """
+    text = (response or "").strip()
+    if not text:
+        raise ValueError("Empty GetErrorID response")
+    if "[" not in text or "]" not in text:
+        raise ValueError(f"Malformed GetErrorID payload (missing matrix): {response!r}")
+
+    nums = [int(n) for n in re.findall(r"[-+]?\d+", text)]
+    if not nums:
+        raise ValueError(f"Cannot parse GetErrorID response: {response!r}")
+
+    status = nums[0]
+    if status != 0:
+        raise ValueError(f"GetErrorID returned status {status}: {response!r}")
+
+    return [n for n in nums[1:] if n != 0]
 
 # ---------------------------------------------------------------------------
 # Safety helpers
@@ -300,9 +353,7 @@ def check_errors(dashboard) -> None:
     """
     try:
         resp = dashboard.GetErrorID()
-        # Response: "0,[[id,...]]" — extract all integers
-        nums = re.findall(r"\d+", resp)
-        error_ids = [int(n) for n in nums if int(n) != 0]
+        error_ids = parse_error_ids(resp)
         if error_ids:
             print(f"[check_errors] Active error IDs: {error_ids}")
             dashboard.ClearError()

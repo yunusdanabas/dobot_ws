@@ -4,18 +4,18 @@
 
 | Robot | IP Address |
 |-------|------------|
-| 1     | 192.168.2.9  |
+| 1     | 192.168.2.7  |
 | 2     | 192.168.2.10 |
-| 3     | 192.168.2.7  |
-| 4     | 192.168.2.8  |
+| 3     | 192.168.2.9  |
+| 4     | 192.168.2.6  |
 
 **PC static IP**: `192.168.2.100`, netmask `255.255.255.0`
 
-Verify connectivity: `ping 192.168.2.9`
+Verify connectivity: `ping 192.168.2.7`
 
 
 
-## Scripts (`mg400/01–15`)
+## Scripts (`mg400/01–17`)
 
 | Script | Description |
 |--------|-------------|
@@ -35,8 +35,69 @@ Verify connectivity: `ping 192.168.2.9`
 | `14_joint_control.py` | Interactive J1–J4 REPL with FK display, clamping, optional CSV log |
 | `15_multi_joint_control.py` | Broadcast joint commands to multiple robots simultaneously |
 | `16_relative_joint_control.py` | Body-frame FK exercise: enter relative joint angles, observe conversion chain and FK prediction |
+| `17_joint_control_gui.py` | PyQt5 GUI: Absolute Joint / Relative Joint / XYZ Cartesian tabs, +/− step buttons, live pose readout, speed slider, Home + ESTOP, RobotViz integration |
 
 All scripts accept `--robot N` (N=1–4) or `--ip <addr>`.
+
+## Sliding Rail — Robot 3 (DT-AC-HDSR-001)
+
+Robot 2 (IP `192.168.2.10`) has a **DOBOT MG400 Sliding Rail Kit** attached.
+Hardware specs: 800 mm travel, ±0.05 mm repeat accuracy, 800 mm/s max speed.
+Full hardware spec: see `dobot_slider_info.md` (repo root).
+
+### One-time DobotStudio Pro Setup (required before any slider script)
+
+1. Open DobotStudio Pro → **Configure** → **External Axis**
+2. Set **Type** to **Linear** and **Unit** to **mm**
+3. Enable the external axis and click **Save**
+4. Reboot the robot controller
+5. Verify: `ping 192.168.2.10` and run `slider/01_slider_connect_test.py`
+
+### Slider Scripts (`mg400/slider/01–04`)
+
+| Script | Description |
+|--------|-------------|
+| `slider/01_slider_connect_test.py` | TCP test; no enable, no motion; shows position = UNKNOWN |
+| `slider/02_slider_basic.py` | Home arm + slider, traverse [0,200,400,600,800] mm |
+| `slider/03_slider_arm_demo.py` | Coordinated arm + rail via `SyncAll()` (5 waypoints) |
+| `slider/04_slider_teleop.py` | Hybrid keyboard teleop: `MoveJog` (arm) + incremental `MovJExt` (slider) |
+
+All slider scripts default to `--robot 3`. Pass `--robot N` or `--ip <addr>` to override.
+
+### Key Slider API
+
+```python
+from mg400.slider.utils_slider import (
+    go_home_slider,    # MovJExt(0) + Sync() — establishes position reference
+    safe_move_ext,     # clamp + MovJExt; optional sync=True
+    jog_slider,        # relative step from current position
+    get_slider_pos,    # returns last commanded mm, or None if not homed
+    print_slider_status,
+)
+
+# Pattern: home → move → SyncAll for coordinated arm+rail
+go_home_slider(move_api)                       # reference at 0 mm
+safe_move_ext(move_api, 400.0)                 # queue slider (no Sync yet)
+safe_move(move_api, 300, 0, 50, 0)             # queue arm   (no Sync yet)
+move_api.SyncAll()                             # wait for BOTH queues
+```
+
+**Notes:**
+- `move_api.SyncAll()` waits for the arm queue **and** the slider queue.
+- `move_api.Sync()` waits for the arm queue only.
+- There is **no** `GetPoseExt` — slider position is tracked in software.
+- `MovJExt` is in `vendor/TCP-IP-4Axis-Python/dobot_api.py` (line 770).
+
+## Joint Ranges (per DT-MG400-4R075-01 hardware guide V1.1, Table 2.1)
+
+| Joint | Range | Notes |
+|-------|-------|-------|
+| J1 | ±160° | base rotation |
+| J2 | -25° ~ +85° | shoulder elevation from horizontal |
+| J3 | -25° ~ +105° | firmware absolute = j2 + j3_rel; factory home = 60° |
+| J4 | ±180° | wrist rotation |
+
+Factory/home joint angles: J1=0°, J2=0°, J3=60°, J4=0° (§2.8 of hardware guide)
 
 ## Product Information
 

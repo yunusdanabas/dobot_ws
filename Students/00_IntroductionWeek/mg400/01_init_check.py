@@ -9,15 +9,15 @@ and confirms the final pose.
 Run this first to verify that your hardware and network setup are working.
 
 Usage:
-    python 01_init_check.py               # Robot 1 (192.168.2.9)
-    python 01_init_check.py --robot 2     # Robot 2 (192.168.2.10)
-    python 01_init_check.py --ip 192.168.2.9
+    python 01_init_check.py               # Robot 1 (192.168.2.7)
+    python 01_init_check.py --robot 2     # Robot 2 (192.168.2.7)
+    python 01_init_check.py --ip 192.168.2.7
 
 Prerequisites:
   - PC Ethernet set to static IP 192.168.2.100 / 255.255.255.0
   - SDK cloned: git clone https://github.com/Dobot-Arm/TCP-IP-4Axis-Python.git
       dobot_ws/vendor/TCP-IP-4Axis-Python
-  - Verify network: ping 192.168.2.9
+  - Verify network: ping 192.168.2.7
 """
 
 import argparse

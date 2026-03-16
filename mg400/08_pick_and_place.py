@@ -13,7 +13,7 @@ control and is easier for students to debug.
 Edit PICK and PLACE constants to match your table layout.
 
 Usage:
-    python 08_pick_and_place.py [--ip 192.168.2.9] [--viz]
+    python 08_pick_and_place.py [--ip 192.168.2.7] [--viz]
     python 08_pick_and_place.py --robot 2 [--viz]
 """
 

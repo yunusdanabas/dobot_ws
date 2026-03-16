@@ -17,7 +17,7 @@ Viz integration: attach to move_api so all MovJ/MovL calls auto-forward.
 For Arc/Circle the final endpoint is sent manually via viz.send().
 
 Usage:
-    python 09_arc_motion.py [--ip 192.168.2.9] [--viz]
+    python 09_arc_motion.py [--ip 192.168.2.7] [--viz]
     python 09_arc_motion.py --robot 2 [--viz]
 """
 

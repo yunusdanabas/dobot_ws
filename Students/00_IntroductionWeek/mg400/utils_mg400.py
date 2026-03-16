@@ -23,10 +23,10 @@ Network setup (one-time): set PC Ethernet adapter to static IP 192.168.2.100/24.
 Verify connectivity:  ping 192.168.2.9
 
 Robot IP map (192.168.2.x subnet):
-  Robot 1 → 192.168.2.9
+  Robot 1 → 192.168.2.7
   Robot 2 → 192.168.2.10
-  Robot 3 → 192.168.2.7
-  Robot 4 → 192.168.2.8
+  Robot 3 → 192.168.2.9
+  Robot 4 → 192.168.2.6
 
 MG400 coordinate notes:
   - X: 60–400 mm  (safe inner limit ≈60 mm due to base singularity; max reach 440 mm)
@@ -76,10 +76,10 @@ from dobot_api import DobotApiDashboard, DobotApiMove  # noqa: E402
 # ---------------------------------------------------------------------------
 
 ROBOT_IPS = {
-    1: "192.168.2.9",
+    1: "192.168.2.7",
     2: "192.168.2.10",
-    3: "192.168.2.7",
-    4: "192.168.2.8",
+    3: "192.168.2.9",
+    4: "192.168.2.6",
 }
 MG400_IP       = ROBOT_IPS[1]   # default: Robot 1
 DASHBOARD_PORT = 29999

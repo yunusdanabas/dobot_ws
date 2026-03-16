@@ -17,7 +17,7 @@ The viz window shows the XY and XZ traces side by side for comparison.
 Run three times (or watch all modes in one run) to compare paths.
 
 Usage:
-    python 11_motion_modes.py [--ip 192.168.2.9] [--viz]
+    python 11_motion_modes.py [--ip 192.168.2.7] [--viz]
     python 11_motion_modes.py --robot 2 [--viz]
 """
 

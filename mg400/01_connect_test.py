@@ -7,12 +7,12 @@ enabling the robot (motors stay off).
 
 Prerequisites:
   1. PC Ethernet set to static 192.168.2.100 / 255.255.255.0
-  2. ping 192.168.2.9 succeeds (Robot 1 default)
+  2. ping 192.168.2.7 succeeds (Robot 1 default)
   3. SDK cloned: git clone https://github.com/Dobot-Arm/TCP-IP-4Axis-Python.git
                   /path/to/dobot_ws/vendor/TCP-IP-4Axis-Python
 
 Usage:
-    python 01_connect_test.py [--ip 192.168.2.9]
+    python 01_connect_test.py [--ip 192.168.2.7]
     python 01_connect_test.py --robot 2
 """
 

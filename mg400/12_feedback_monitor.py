@@ -15,7 +15,7 @@ Displays live X/Y/Z/R and robot_mode at the configured Hz, plus sends to viz.
 No motion commands — robot can be disabled (just reading state).
 
 Usage:
-    python 12_feedback_monitor.py [--ip 192.168.2.9] [--viz] [--hz 10]
+    python 12_feedback_monitor.py [--ip 192.168.2.7] [--viz] [--hz 10]
     python 12_feedback_monitor.py --robot 2 [--viz]
 """
 

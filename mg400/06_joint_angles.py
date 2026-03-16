@@ -15,7 +15,7 @@ MG400 joints:
   J4 = wrist rotation (-170° to +170°)
 
 Usage:
-    python 06_joint_angles.py [--ip 192.168.2.9]
+    python 06_joint_angles.py [--ip 192.168.2.7]
     python 06_joint_angles.py --robot 2
 """
 

@@ -22,13 +22,13 @@ Commands:
   h              return to READY_POSE (home)
   q              quit
 
-MG400 joint limits (safe bounds on firmware/absolute angles):
-  J1: ±170°    J2: -5° to 90°    J3: -140° to 5°    J4: ±170°
+MG400 joint limits (per hardware guide V1.1, on firmware/absolute angles):
+  J1: ±160°    J2: -25° to 85°    J3: -25° to 105°    J4: ±180°
 
 Usage:
-    python 03_relative_joint_control.py               # Robot 1 (192.168.2.9)
+    python 03_relative_joint_control.py               # Robot 1 (192.168.2.7)
     python 03_relative_joint_control.py --robot 2     # Robot 2
-    python 03_relative_joint_control.py --ip 192.168.2.9
+    python 03_relative_joint_control.py --ip 192.168.2.7
 """
 
 import argparse
@@ -52,10 +52,10 @@ from utils_mg400 import (
 # ---------------------------------------------------------------------------
 
 JOINT_BOUNDS = {
-    "j1": (-170.0, 170.0),
-    "j2": (  -5.0,  90.0),
-    "j3": (-140.0,   5.0),   # j3_fw = j3_abs = j2_rel + j3_rel
-    "j4": (-170.0, 170.0),   # j4_fw = j4_abs = j2_rel + j3_rel + j4_rel
+    "j1": (-160.0, 160.0),   # ±160° per hardware guide
+    "j2": ( -25.0,  85.0),   # -25° ~ +85° per hardware guide
+    "j3": ( -25.0, 105.0),   # j3_fw = j3_abs = j2_rel + j3_rel; -25° ~ +105° per hardware guide
+    "j4": (-180.0, 180.0),   # j4_fw = j4_abs = j2_rel + j3_rel + j4_rel; ±180° per hardware guide
 }
 
 

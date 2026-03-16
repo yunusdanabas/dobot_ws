@@ -11,7 +11,7 @@ Steps:
   7. Disable robot and close connections
 
 Usage:
-    python 02_first_connection.py [--ip 192.168.2.9]
+    python 02_first_connection.py [--ip 192.168.2.7]
     python 02_first_connection.py --robot 2
 """
 

@@ -28,7 +28,7 @@ bot = Dobot(port="/dev/ttyUSB0")   # one object, one serial port
 **MG400:**
 ```python
 from utils_mg400 import connect
-dashboard, move_api, feed = connect("192.168.2.9")  # three objects, three TCP sockets
+dashboard, move_api, feed = connect("192.168.2.7")  # three objects, three TCP sockets
 # dashboard → robot state, errors, FK/IK queries, I/O
 # move_api  → motion commands
 # feed      → 8 ms binary telemetry stream (read-only)

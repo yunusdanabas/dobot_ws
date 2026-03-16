@@ -35,4 +35,4 @@ Supports two robots:
 
 - Only one process can own the Dobot serial port at a time.
 - Keep vendor folder names stable (`vendor/dobot-python`, `vendor/TCP-IP-4Axis-Python`) — scripts auto-discover these paths.
-- MG400 network: set PC Ethernet to static IP `192.168.2.100 / 255.255.255.0`. Robot IPs: 192.168.2.9 (1), .10 (2), .7 (3), .8 (4).
+- MG400 network: set PC Ethernet to static IP `192.168.2.100 / 255.255.255.0`. Robot IPs: 192.168.2.7 (1), .9 (2), .10 (3), .8 (4).

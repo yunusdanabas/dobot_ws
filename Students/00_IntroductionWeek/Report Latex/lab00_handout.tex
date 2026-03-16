@@ -248,7 +248,7 @@ cd dobot_ws
 git clone https://github.com/Dobot-Arm/TCP-IP-4Axis-Python.git \
     vendor/TCP-IP-4Axis-Python
 # Set PC Ethernet to static IP 192.168.2.100 / 255.255.255.0
-# Verify: ping 192.168.2.9
+# Verify: ping 192.168.2.7
 \end{lstlisting}
 \end{tcolorbox}
 
@@ -256,7 +256,7 @@ git clone https://github.com/Dobot-Arm/TCP-IP-4Axis-Python.git \
 \begin{lstlisting}[style=BashStyle]
 pip install -r mg400/requirements.txt
 
-# Default: Robot 1 (192.168.2.9)
+# Default: Robot 1 (192.168.2.7)
 cd mg400 && python 01_init_check.py
 
 # Select a specific robot (1-4)
@@ -291,7 +291,7 @@ python 01_init_check.py --robot 2
   \item \textbf{Power:} Connect the DC power adapter. Wait for the status LED to turn solid green.
   \item \textbf{Network:} Connect an Ethernet cable from the robot to your PC.
   \item \textbf{PC Static IP:} Set your Ethernet adapter to \texttt{192.168.2.100}, netmask \texttt{255.255.255.0}.
-  \item \textbf{Verify:} \texttt{ping 192.168.2.9} — should respond with $<$\qty{1}{\ms} latency.
+  \item \textbf{Verify:} \texttt{ping 192.168.2.7} — should respond with $<$\qty{1}{\ms} latency.
 \end{enumerate}
 
 \textbf{Robot IP addresses (192.168.2.x subnet):}
@@ -300,9 +300,9 @@ python 01_init_check.py --robot 2
   \toprule
   \textbf{Robot} & \textbf{IP Address} & \textbf{CLI flag} \\
   \midrule
-  1 & 192.168.2.9  & \texttt{--robot 1} (default) \\
-  2 & 192.168.2.10 & \texttt{--robot 2} \\
-  3 & 192.168.2.7  & \texttt{--robot 3} \\
+  1 & 192.168.2.7  & \texttt{--robot 1} (default) \\
+  2 & 192.168.2.9  & \texttt{--robot 2} \\
+  3 & 192.168.2.10 & \texttt{--robot 3} \\
   4 & 192.168.2.8  & \texttt{--robot 4} \\
   \bottomrule
 \end{tabularx}

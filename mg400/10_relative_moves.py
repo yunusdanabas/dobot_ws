@@ -19,7 +19,7 @@ Demos:
   4. Relative pick-and-place pattern using vertical RelMovL for Z
 
 Usage:
-    python 10_relative_moves.py [--ip 192.168.2.9] [--viz]
+    python 10_relative_moves.py [--ip 192.168.2.7] [--viz]
     python 10_relative_moves.py --robot 2 [--viz]
 """
 

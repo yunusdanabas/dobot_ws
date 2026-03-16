@@ -1,4 +1,4 @@
-# mg400/requirements.txt — minimal dependencies for MG400 student intro scripts
+# mg400/requirements.txt — minimal dependencies for MG400 intro scripts
 #
 # Install with:
 #   pip install -r requirements.txt
@@ -10,4 +10,4 @@
 #   git clone https://github.com/Dobot-Arm/TCP-IP-4Axis-Python.git vendor/TCP-IP-4Axis-Python
 # See CLAUDE.md for full network setup instructions.
 
-numpy
+numpy>=1.26,<3

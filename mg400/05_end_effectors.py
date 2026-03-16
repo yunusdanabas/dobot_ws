@@ -15,7 +15,7 @@ Typical wiring:
 Edit I/O indices to match your hardware.
 
 Usage:
-    python 05_end_effectors.py [--ip 192.168.2.9]
+    python 05_end_effectors.py [--ip 192.168.2.7]
     python 05_end_effectors.py --robot 2
 """
 
