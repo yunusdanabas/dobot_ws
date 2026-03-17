@@ -1,22 +1,15 @@
 """
 00_magician_gui.py — PyQt5 GUI for Dobot Magician (ME403 Introduction Week).
 
-Combines the functionality of:
-  • 01_init_check.py   — connection check, alarm clearing, homing
-  • 02_joint_control.py — absolute joint-angle control
-  • 03_relative_joint_control.py — body-frame relative joint control + FK
-
-Two control tabs:
-  • Absolute Joint  — J1–J4 firmware angles (direct)
-  • Relative Joint  — body-frame relative angles (converted to firmware)
-
 Features:
   − Auto port discovery (or manual selection)
   − Connect / Disconnect with prepare_robot() (alarm clear + homing)
   − Clear Alarms button
   − Home button (joint zero)
+  − Ready Pose button
+  − Joint control: J1–J4 with +/− step buttons
+  − Joint limits reference panel
   − Live pose readout (500 ms poll)
-  − FK prediction (local, L1=135 mm, L2=147 mm)
   − Step-size combo (0.5°/1°/5°/10°)
   − Details log panel
 
@@ -28,7 +21,6 @@ Prepared by Yunus Emre Danabas for ME403.
 
 from __future__ import annotations
 
-import math
 import sys
 from pathlib import Path
 from typing import Callable, Optional
@@ -37,7 +29,7 @@ from PyQt5.QtCore import Qt, QThread, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
     QApplication, QComboBox, QDoubleSpinBox, QFrame, QGroupBox,
-    QHBoxLayout, QLabel, QMainWindow, QPushButton, QTabWidget,
+    QHBoxLayout, QLabel, QMainWindow, QPushButton,
     QTextEdit, QVBoxLayout, QWidget,
 )
 
@@ -68,10 +60,14 @@ JOINT_BOUNDS = {
     "j4": (-90.0,  90.0),
 }
 
-L1 = 135.0   # upper arm (mm)
-L2 = 147.0   # forearm (mm)
+JOINT_DESCRIPTIONS = {
+    "j1": "Base Rotation",
+    "j2": "Rear Arm Elevation",
+    "j3": "Forearm Elevation",
+    "j4": "End-Effector Rotation",
+}
 
-POLL_INTERVAL_MS = 500   # serial is slower than TCP — use 500 ms
+POLL_INTERVAL_MS = 500
 
 _STATUS_STYLE: dict[str, tuple[str, str]] = {
     "—":             ("#bdc3c7", "#2c3e50"),
@@ -84,7 +80,7 @@ _STATUS_STYLE: dict[str, tuple[str, str]] = {
 
 
 # ---------------------------------------------------------------------------
-# Helpers (from scripts 02 + 03)
+# Helpers
 # ---------------------------------------------------------------------------
 
 def clamp_joints(j1: float, j2: float, j3: float, j4: float):
@@ -95,48 +91,6 @@ def clamp_joints(j1: float, j2: float, j3: float, j4: float):
     cj4 = clamp(j4, *JOINT_BOUNDS["j4"])
     was_clamped = (cj1, cj2, cj3, cj4) != (j1, j2, j3, j4)
     return cj1, cj2, cj3, cj4, was_clamped
-
-
-def rel_to_abs_magician(j1_r, j2_r, j3_r, j4_r):
-    """Convert body-frame relative angles to firmware + absolute tuples.
-
-    Body-frame chain:
-      j3_abs = j2_rel + j3_rel
-      j4_abs = j3_abs + j4_rel
-
-    Magician firmware quirk:
-      j3_fw = j3_rel   (firmware J3 is already body-frame)
-      j4_fw = j4_abs   (firmware J4 is absolute)
-
-    Returns:
-      fw_tuple  = (j1_fw, j2_fw, j3_fw, j4_fw)
-      abs_tuple = (j1_abs, j2_abs, j3_abs, j4_abs)
-    """
-    j3_abs = j2_r + j3_r
-    j4_abs = j3_abs + j4_r
-    fw_tuple  = (j1_r, j2_r, j3_r,   j4_abs)
-    abs_tuple = (j1_r, j2_r, j3_abs, j4_abs)
-    return fw_tuple, abs_tuple
-
-
-def fw_to_rel_magician(j1_fw, j2_fw, j3_fw, j4_fw):
-    """Convert firmware angles back to body-frame relative angles."""
-    j4_rel = j4_fw - (j2_fw + j3_fw)
-    return j1_fw, j2_fw, j3_fw, j4_rel
-
-
-def fk(j1: float, j2: float, j3: float, j4: float):
-    """Predict Cartesian pose from firmware joint angles.
-    Returns (x, y, z, r) in mm / degrees.
-    """
-    a1 = math.radians(j1)
-    a2 = math.radians(j2)
-    a3 = math.radians(j2 + j3)   # forearm from horizontal = j3_abs
-    reach  = L1 * math.cos(a2) + L2 * math.cos(a3)
-    height = L1 * math.sin(a2) + L2 * math.sin(a3)
-    x = reach * math.cos(a1)
-    y = reach * math.sin(a1)
-    return x, y, height, j4
 
 
 # ---------------------------------------------------------------------------
@@ -156,7 +110,7 @@ def list_available_ports() -> list[str]:
 class AxisRow(QWidget):
     """Label | SpinBox | [−] [+] [Move] — clicking +/− adjusts spinbox only."""
 
-    move_requested = pyqtSignal(float)   # emits spinbox value when Move clicked
+    move_requested = pyqtSignal(float)
 
     def __init__(
         self,
@@ -175,7 +129,7 @@ class AxisRow(QWidget):
         row.setContentsMargins(0, 2, 0, 2)
 
         lbl = QLabel(label)
-        lbl.setFixedWidth(56)
+        lbl.setFixedWidth(40)
         lbl.setFont(QFont("monospace", 10, QFont.Bold))
         row.addWidget(lbl)
 
@@ -204,7 +158,6 @@ class AxisRow(QWidget):
 
         row.addStretch()
 
-        # Callable that returns current step size; wired externally.
         self.get_step: Callable[[], float] = lambda: 1.0
 
     def _step_down(self) -> None:
@@ -219,118 +172,11 @@ class AxisRow(QWidget):
 
 
 # ---------------------------------------------------------------------------
-# AbsJointTab — direct firmware joint angles
-# ---------------------------------------------------------------------------
-
-class AbsJointTab(QWidget):
-    """Tab: J1–J4 firmware (absolute) angles."""
-
-    send_all_requested    = pyqtSignal(list)        # [j1, j2, j3, j4]
-    move_single_requested = pyqtSignal(int, float)  # axis_idx, value
-
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
-        super().__init__(parent)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-
-        axes = [
-            ("J1 (fw)", *JOINT_BOUNDS["j1"]),
-            ("J2 (fw)", *JOINT_BOUNDS["j2"]),
-            ("J3 (fw)", *JOINT_BOUNDS["j3"]),
-            ("J4 (fw)", *JOINT_BOUNDS["j4"]),
-        ]
-        self.rows: list[AxisRow] = []
-        for idx, (label, lo, hi) in enumerate(axes):
-            row = AxisRow(label, lo, hi, decimals=2, suffix="°")
-            row.move_requested.connect(
-                lambda v, i=idx: self.move_single_requested.emit(i, v)
-            )
-            layout.addWidget(row)
-            self.rows.append(row)
-
-        layout.addStretch()
-
-        send_all = QPushButton("Send All  (J1 – J4)")
-        send_all.setFixedHeight(32)
-        send_all.clicked.connect(
-            lambda: self.send_all_requested.emit([r.spin.value() for r in self.rows])
-        )
-        layout.addWidget(send_all)
-
-    def set_values(self, j1: float, j2: float, j3: float, j4: float) -> None:
-        for row, v in zip(self.rows, (j1, j2, j3, j4)):
-            row.spin.setValue(v)
-
-    def set_enabled(self, en: bool) -> None:
-        for r in self.rows:
-            r.set_enabled(en)
-
-
-# ---------------------------------------------------------------------------
-# RelJointTab — body-frame relative angles
-# ---------------------------------------------------------------------------
-
-class RelJointTab(QWidget):
-    """Tab: J1_rel–J4_rel body-frame angles (converted to firmware before move)."""
-
-    send_all_requested    = pyqtSignal(list)
-    move_single_requested = pyqtSignal(int, float)  # axis_idx, value
-
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
-        super().__init__(parent)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-
-        # Spinbox ranges use wider worst-case bounds; firmware limits enforced at move time.
-        axes = [
-            ("J1 rel", -90.0,  90.0),
-            ("J2 rel",   0.0,  85.0),
-            ("J3 rel", -95.0,  85.0),   # j3_fw = j3_rel; worst-case vs j2
-            ("J4 rel", -175.0, 90.0),   # j4_fw = j2+j3+j4_rel; worst-case
-        ]
-        self.rows: list[AxisRow] = []
-        for idx, (label, lo, hi) in enumerate(axes):
-            row = AxisRow(label, lo, hi, decimals=2, suffix="°")
-            row.move_requested.connect(
-                lambda v, i=idx: self.move_single_requested.emit(i, v)
-            )
-            layout.addWidget(row)
-            self.rows.append(row)
-
-        layout.addStretch()
-
-        note = QLabel(
-            "FK chain:  j3_abs = J2 + J3_rel  |  j4_abs = j3_abs + J4_rel\n"
-            "Firmware:   j3_fw  = J3_rel       |  j4_fw  = j4_abs"
-        )
-        note.setFont(QFont("monospace", 8))
-        note.setStyleSheet("color:#7f8c8d;")
-        layout.addWidget(note)
-
-        send_all = QPushButton("Send All  (J1_rel – J4_rel)")
-        send_all.setFixedHeight(32)
-        send_all.clicked.connect(
-            lambda: self.send_all_requested.emit([r.spin.value() for r in self.rows])
-        )
-        layout.addWidget(send_all)
-
-    def set_values(
-        self, j1_r: float, j2_r: float, j3_r: float, j4_r: float
-    ) -> None:
-        for row, v in zip(self.rows, (j1_r, j2_r, j3_r, j4_r)):
-            row.spin.setValue(v)
-
-    def set_enabled(self, en: bool) -> None:
-        for r in self.rows:
-            r.set_enabled(en)
-
-
-# ---------------------------------------------------------------------------
 # Workers (QThread)
 # ---------------------------------------------------------------------------
 
 class ConnectWorker(QThread):
-    done = pyqtSignal(bool, str)  # success, message
+    done = pyqtSignal(bool, str)
 
     def __init__(self, port: str) -> None:
         super().__init__()
@@ -348,7 +194,7 @@ class ConnectWorker(QThread):
 
 
 class MotionWorker(QThread):
-    done = pyqtSignal(bool, str)  # success, log message
+    done = pyqtSignal(bool, str)
 
     def __init__(self, motion_fn: Callable) -> None:
         super().__init__()
@@ -370,16 +216,12 @@ class MagicianWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Dobot Magician — Introduction Week GUI  (ME 403)")
-        self.setMinimumSize(780, 620)
+        self.setMinimumSize(720, 580)
 
-        # Robot handle — None when disconnected
         self._bot: Optional[Dobot] = None
-
-        # Worker handles
         self._connect_worker:  Optional[ConnectWorker] = None
         self._motion_worker:   Optional[MotionWorker]  = None
 
-        # Poll timer (500 ms)
         self._poll_timer = QTimer(self)
         self._poll_timer.setInterval(POLL_INTERVAL_MS)
         self._poll_timer.timeout.connect(self._poll_pose)
@@ -462,7 +304,7 @@ class MagicianWindow(QMainWindow):
         self._step_combo = QComboBox()
         for v in ("0.5°", "1°", "5°", "10°"):
             self._step_combo.addItem(v, userData=float(v.rstrip("°")))
-        self._step_combo.setCurrentIndex(1)  # default 1°
+        self._step_combo.setCurrentIndex(1)
         self._step_combo.setFixedWidth(64)
         action_bar.addWidget(self._step_combo)
 
@@ -473,16 +315,41 @@ class MagicianWindow(QMainWindow):
         sep1.setFrameShadow(QFrame.Sunken)
         root.addWidget(sep1)
 
-        # ── Middle: tabs + live readout ───────────────────────────────
+        # ── Middle: joint controls + live readout ─────────────────────
         mid = QHBoxLayout()
 
-        # Control tabs
-        self._tabs = QTabWidget()
-        self._abs_tab = AbsJointTab()
-        self._rel_tab = RelJointTab()
-        self._tabs.addTab(self._abs_tab, "Absolute Joint")
-        self._tabs.addTab(self._rel_tab, "Relative Joint")
-        mid.addWidget(self._tabs, stretch=2)
+        # --- Left: Joint controls ---
+        joint_box = QGroupBox("Joint Control")
+        joint_layout = QVBoxLayout(joint_box)
+        joint_layout.setSpacing(4)
+
+        axes = [
+            ("J1", *JOINT_BOUNDS["j1"]),
+            ("J2", *JOINT_BOUNDS["j2"]),
+            ("J3", *JOINT_BOUNDS["j3"]),
+            ("J4", *JOINT_BOUNDS["j4"]),
+        ]
+        self._joint_rows: list[AxisRow] = []
+        for idx, (label, lo, hi) in enumerate(axes):
+            row = AxisRow(label, lo, hi, decimals=2, suffix="°")
+            row.move_requested.connect(
+                lambda v, i=idx: self._on_move_single(i, v)
+            )
+            joint_layout.addWidget(row)
+            self._joint_rows.append(row)
+
+        joint_layout.addStretch()
+
+        send_all = QPushButton("Send All  (J1 – J4)")
+        send_all.setFixedHeight(32)
+        send_all.clicked.connect(self._on_send_all)
+        self._send_all_btn = send_all
+        joint_layout.addWidget(send_all)
+
+        mid.addWidget(joint_box, stretch=2)
+
+        # --- Right: Live pose + Joint limits ---
+        right_col = QVBoxLayout()
 
         # Live pose readout
         pose_box = QGroupBox("Live Pose")
@@ -498,14 +365,25 @@ class MagicianWindow(QMainWindow):
             self._pose_labels[key] = lbl
 
         pose_layout.addStretch()
+        right_col.addWidget(pose_box)
 
-        self._fk_label = QLabel("FK: —")
-        self._fk_label.setFont(QFont("monospace", 9))
-        self._fk_label.setStyleSheet("color:#7f8c8d;")
-        self._fk_label.setWordWrap(True)
-        pose_layout.addWidget(self._fk_label)
+        # Joint limits reference
+        limits_box = QGroupBox("Joint Limits")
+        limits_layout = QVBoxLayout(limits_box)
+        limits_layout.setSpacing(2)
 
-        mid.addWidget(pose_box, stretch=1)
+        small_mono = QFont("monospace", 9)
+        for key in ("j1", "j2", "j3", "j4"):
+            lo, hi = JOINT_BOUNDS[key]
+            desc = JOINT_DESCRIPTIONS[key]
+            lbl = QLabel(f"{key.upper()}: {lo:+.0f}° to {hi:+.0f}°  ({desc})")
+            lbl.setFont(small_mono)
+            lbl.setStyleSheet("color:#2c3e50;")
+            limits_layout.addWidget(lbl)
+
+        right_col.addWidget(limits_box)
+
+        mid.addLayout(right_col, stretch=1)
         root.addLayout(mid)
 
         sep2 = QFrame()
@@ -526,7 +404,7 @@ class MagicianWindow(QMainWindow):
         self._detail = QTextEdit()
         self._detail.setReadOnly(True)
         self._detail.setFont(QFont("monospace", 9))
-        self._detail.setMaximumHeight(160)
+        self._detail.setMaximumHeight(140)
         self._detail.setPlaceholderText(
             "Connection logs, alarm info, move results will appear here.\n"
             "Select a port and click Connect to begin."
@@ -544,23 +422,8 @@ class MagicianWindow(QMainWindow):
         def deg_step() -> float:
             return self._step_combo.currentData()
 
-        for tab in (self._abs_tab, self._rel_tab):
-            for row in tab.rows:
-                row.get_step = deg_step
-
-        # ── Wire tab signals ──────────────────────────────────────────
-        self._abs_tab.send_all_requested.connect(
-            lambda vals: self._on_move_requested("abs_all", vals)
-        )
-        self._abs_tab.move_single_requested.connect(
-            lambda idx, v: self._on_move_requested("abs_single", [idx, v])
-        )
-        self._rel_tab.send_all_requested.connect(
-            lambda vals: self._on_move_requested("rel_all", vals)
-        )
-        self._rel_tab.move_single_requested.connect(
-            lambda idx, v: self._on_move_requested("rel_single", [idx, v])
-        )
+        for row in self._joint_rows:
+            row.get_step = deg_step
 
     # ------------------------------------------------------------------
     # Port list refresh
@@ -570,14 +433,12 @@ class MagicianWindow(QMainWindow):
         current = self._port_combo.currentText()
         self._port_combo.clear()
         ports = list_available_ports()
-        # Try to auto-discover the Dobot port
         auto = find_port()
         if auto and auto not in ports:
             ports.insert(0, auto)
         for p in ports:
             tag = f"{p}  ★" if p == auto else p
             self._port_combo.addItem(tag, userData=p)
-        # Re-select previous or auto-discovered port
         preferred = current.split("  ")[0].strip() if current else auto
         if preferred:
             for i in range(self._port_combo.count()):
@@ -618,19 +479,19 @@ class MagicianWindow(QMainWindow):
         self._clear_alarms_btn.setEnabled(connected)
         self._home_btn.setEnabled(connected)
         self._ready_btn.setEnabled(connected)
-        self._tabs.setEnabled(connected)
-        for tab in (self._abs_tab, self._rel_tab):
-            tab.set_enabled(connected)
+        self._send_all_btn.setEnabled(connected)
+        for row in self._joint_rows:
+            row.set_enabled(connected)
         if not connected:
             self._apply_badge("—")
             for key, lbl in self._pose_labels.items():
                 lbl.setText(f"{key}: —")
-            self._fk_label.setText("FK: —")
 
     def _set_motion_busy(self, busy: bool) -> None:
         en = not busy
-        for tab in (self._abs_tab, self._rel_tab):
-            tab.set_enabled(en)
+        for row in self._joint_rows:
+            row.set_enabled(en)
+        self._send_all_btn.setEnabled(en)
         self._home_btn.setEnabled(en)
         self._ready_btn.setEnabled(en)
         self._disconnect_btn.setEnabled(en)
@@ -670,7 +531,6 @@ class MagicianWindow(QMainWindow):
         self._bot = worker.bot
         self._log(msg)
 
-        # Read and display starting pose
         self._init_spinboxes()
         self._set_connected(True)
         self._apply_badge("CONNECTED")
@@ -699,23 +559,18 @@ class MagicianWindow(QMainWindow):
         if self._bot is None:
             return
         try:
-            x, y, z, r, j1_fw, j2_fw, j3_fw, j4_fw = unpack_pose(
-                self._bot.get_pose()
-            )
+            _, _, _, _, j1, j2, j3, j4 = unpack_pose(self._bot.get_pose())
         except Exception:
             return
-        self._abs_tab.set_values(j1_fw, j2_fw, j3_fw, j4_fw)
-        j1_r, j2_r, j3_r, j4_r = fw_to_rel_magician(j1_fw, j2_fw, j3_fw, j4_fw)
-        self._rel_tab.set_values(j1_r, j2_r, j3_r, j4_r)
+        for row, v in zip(self._joint_rows, (j1, j2, j3, j4)):
+            row.spin.setValue(v)
 
     # ------------------------------------------------------------------
     # Poll pose (500 ms)
     # ------------------------------------------------------------------
 
     def _poll_pose(self) -> None:
-        if self._motion_worker is not None:
-            return   # don't query during motion
-        if self._bot is None:
+        if self._motion_worker is not None or self._bot is None:
             return
         try:
             x, y, z, r, j1, j2, j3, j4 = unpack_pose(self._bot.get_pose())
@@ -729,106 +584,61 @@ class MagicianWindow(QMainWindow):
             self._pose_labels[key].setText(f"{key}: {val:.2f}")
 
     # ------------------------------------------------------------------
-    # Motion dispatch
+    # Motion: Send All
     # ------------------------------------------------------------------
 
-    def _on_move_requested(self, mode: str, vals: list) -> None:
+    def _on_send_all(self) -> None:
         if self._bot is None or self._motion_worker is not None:
             return
-
         bot = self._bot
-
-        if mode == "abs_all":
-            j1, j2, j3, j4 = vals
-            j1c, j2c, j3c, j4c, clamped = clamp_joints(j1, j2, j3, j4)
-            if clamped:
-                self._log(
-                    f"[clamp] ({j1:.1f},{j2:.1f},{j3:.1f},{j4:.1f})"
-                    f" → ({j1c:.1f},{j2c:.1f},{j3c:.1f},{j4c:.1f})"
-                )
-
-            # FK prediction
-            fk_x, fk_y, fk_z, fk_r = fk(j1c, j2c, j3c, j4c)
-            self._fk_label.setText(
-                f"FK: X={fk_x:.1f} Y={fk_y:.1f} Z={fk_z:.1f} R={fk_r:.1f}"
-            )
-
-            def _fn():
-                bot.move_to(j1c, j2c, j3c, j4c, wait=True, mode=MODE_PTP.MOVJ_ANGLE)
-                return (
-                    f"MOVJ_ANGLE {j1c:.1f} {j2c:.1f} {j3c:.1f} {j4c:.1f}"
-                )
-
-        elif mode == "abs_single":
-            # Move only the selected joint; keep the other 3 at current robot values.
-            axis_idx = int(vals[0])
-            val      = float(vals[1])
-            axis_names = ["J1", "J2", "J3", "J4"]
-            try:
-                _, _, _, _, cj1, cj2, cj3, cj4 = unpack_pose(bot.get_pose())
-                combined = [cj1, cj2, cj3, cj4]
-            except Exception:
-                combined = [r.spin.value() for r in self._abs_tab.rows]
-            combined[axis_idx] = val
-            j1c, j2c, j3c, j4c, _ = clamp_joints(*combined)
-
-            def _fn():
-                bot.move_to(j1c, j2c, j3c, j4c, wait=True, mode=MODE_PTP.MOVJ_ANGLE)
-                return f"MOVJ_ANGLE {axis_names[axis_idx]}={val:.1f}"
-
-        elif mode == "rel_all":
-            j1_r, j2_r, j3_r, j4_r = vals
-            (j1_fw, j2_fw, j3_fw, j4_fw), (j1_abs, j2_abs, j3_abs, j4_abs) = \
-                rel_to_abs_magician(j1_r, j2_r, j3_r, j4_r)
-            j1c, j2c, j3c, j4c, clamped = clamp_joints(j1_fw, j2_fw, j3_fw, j4_fw)
-            if clamped:
-                self._log(
-                    f"[clamp-fw] ({j1_fw:.1f},{j2_fw:.1f},{j3_fw:.1f},{j4_fw:.1f})"
-                    f" → ({j1c:.1f},{j2c:.1f},{j3c:.1f},{j4c:.1f})"
-                )
-
-            # FK prediction
-            fk_x, fk_y, fk_z, fk_r = fk(j1c, j2c, j3c, j4c)
-            self._fk_label.setText(
-                f"FK: X={fk_x:.1f} Y={fk_y:.1f} Z={fk_z:.1f} R={fk_r:.1f}"
-            )
-
+        j1, j2, j3, j4 = [r.spin.value() for r in self._joint_rows]
+        j1c, j2c, j3c, j4c, clamped = clamp_joints(j1, j2, j3, j4)
+        if clamped:
             self._log(
-                f"Rel ({j1_r:.1f},{j2_r:.1f},{j3_r:.1f},{j4_r:.1f})"
-                f" → Abs ({j1_abs:.1f},{j2_abs:.1f},{j3_abs:.1f},{j4_abs:.1f})"
-                f" → Fw ({j1c:.1f},{j2c:.1f},{j3c:.1f},{j4c:.1f})"
+                f"[clamp] ({j1:.1f},{j2:.1f},{j3:.1f},{j4:.1f})"
+                f" → ({j1c:.1f},{j2c:.1f},{j3c:.1f},{j4c:.1f})"
             )
 
-            def _fn():
-                bot.move_to(j1c, j2c, j3c, j4c, wait=True, mode=MODE_PTP.MOVJ_ANGLE)
-                return (
-                    f"Rel→Fw MOVJ_ANGLE "
-                    f"rel=({j1_r:.1f},{j2_r:.1f},{j3_r:.1f},{j4_r:.1f}) "
-                    f"fw=({j1c:.1f},{j2c:.1f},{j3c:.1f},{j4c:.1f})"
-                )
-
-        elif mode == "rel_single":
-            # Move only the selected relative joint; keep the other 3 at current values.
-            axis_idx = int(vals[0])
-            val      = float(vals[1])
-            axis_names = ["J1_rel", "J2_rel", "J3_rel", "J4_rel"]
-            rel_vals = [r.spin.value() for r in self._rel_tab.rows]
-            rel_vals[axis_idx] = val
-            (j1_fw, j2_fw, j3_fw, j4_fw), _ = rel_to_abs_magician(*rel_vals)
-            j1c, j2c, j3c, j4c, _ = clamp_joints(j1_fw, j2_fw, j3_fw, j4_fw)
-
-            def _fn():
-                bot.move_to(j1c, j2c, j3c, j4c, wait=True, mode=MODE_PTP.MOVJ_ANGLE)
-                return f"Rel single {axis_names[axis_idx]}={val:.1f} fw=({j1c:.1f},{j2c:.1f},{j3c:.1f},{j4c:.1f})"
-
-        else:
-            return
+        def _fn():
+            bot.move_to(j1c, j2c, j3c, j4c, wait=True, mode=MODE_PTP.MOVJ_ANGLE)
+            return f"MOVJ_ANGLE {j1c:.1f} {j2c:.1f} {j3c:.1f} {j4c:.1f}"
 
         self._set_motion_busy(True)
         worker = MotionWorker(_fn)
         worker.done.connect(self._on_motion_done)
         self._motion_worker = worker
         worker.start()
+
+    # ------------------------------------------------------------------
+    # Motion: Single joint
+    # ------------------------------------------------------------------
+
+    def _on_move_single(self, axis_idx: int, val: float) -> None:
+        if self._bot is None or self._motion_worker is not None:
+            return
+        bot = self._bot
+        axis_names = ["J1", "J2", "J3", "J4"]
+        try:
+            _, _, _, _, cj1, cj2, cj3, cj4 = unpack_pose(bot.get_pose())
+            combined = [cj1, cj2, cj3, cj4]
+        except Exception:
+            combined = [r.spin.value() for r in self._joint_rows]
+        combined[axis_idx] = val
+        j1c, j2c, j3c, j4c, _ = clamp_joints(*combined)
+
+        def _fn():
+            bot.move_to(j1c, j2c, j3c, j4c, wait=True, mode=MODE_PTP.MOVJ_ANGLE)
+            return f"MOVJ_ANGLE {axis_names[axis_idx]}={val:.1f}"
+
+        self._set_motion_busy(True)
+        worker = MotionWorker(_fn)
+        worker.done.connect(self._on_motion_done)
+        self._motion_worker = worker
+        worker.start()
+
+    # ------------------------------------------------------------------
+    # Motion done callback
+    # ------------------------------------------------------------------
 
     def _on_motion_done(self, success: bool, msg: str) -> None:
         self._motion_worker = None
@@ -837,7 +647,6 @@ class MagicianWindow(QMainWindow):
             self._log(f"[Error] {msg}")
         else:
             self._log(f"[Move] {msg}")
-        # Re-sync spinboxes to actual post-move state
         self._init_spinboxes()
 
     # ------------------------------------------------------------------
@@ -909,13 +718,11 @@ class MagicianWindow(QMainWindow):
     def closeEvent(self, event) -> None:
         self._poll_timer.stop()
 
-        # Stop any in-flight motion worker
         if self._motion_worker is not None:
             self._motion_worker.quit()
             self._motion_worker.wait(1000)
             self._motion_worker = None
 
-        # Close robot connection
         if self._bot is not None:
             try:
                 self._bot.close()
@@ -923,7 +730,6 @@ class MagicianWindow(QMainWindow):
                 pass
             self._bot = None
 
-        # Wait for connect worker
         if self._connect_worker is not None:
             self._connect_worker.quit()
             self._connect_worker.wait(1000)

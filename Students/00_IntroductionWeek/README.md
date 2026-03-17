@@ -4,7 +4,7 @@
 
 Run all commands from inside this folder (`00_IntroductionWeek/`).
 
-### Linux / macOS
+### Linux
 
 ```bash
 python3 -m venv .venv
@@ -12,7 +12,7 @@ source .venv/bin/activate
 pip install -r magician/requirements.txt
 ```
 
-Magician serial permission (one-time, then re-login):
+Serial port permission (one-time, then re-login):
 
 ```bash
 sudo usermod -a -G dialout $USER
@@ -26,14 +26,14 @@ python -m venv .venv
 pip install -r magician\requirements.txt
 ```
 
-## Magician Scripts
+## Running the GUI
 
 ```bash
 cd magician
-python 01_init_check.py
-python 02_joint_control.py
-python 03_relative_joint_control.py
+python 00_magician_gui.py
 ```
+
+The GUI handles port discovery, connection, alarm clearing, homing, and joint control.
 
 ## Report Template
 

@@ -1,14 +1,8 @@
-# student/requirements.txt — minimal dependencies for Magician intro scripts
+# requirements.txt — Dependencies for Magician introduction GUI
 #
 # Install with:
 #   pip install -r requirements.txt
-#
-# pydobotplus — Dobot Magician Python library
-# pyserial    — serial port discovery (explicitly listed for clarity)
-#
-# Note: the full workspace requirements.txt (../requirements.txt) also includes
-# PyQt5, pyqtgraph, and numpy for the visualization and extended scripts.
-# You do not need those to run the scripts in this folder.
 
 pydobotplus==0.1.2
 pyserial==3.4
+PyQt5

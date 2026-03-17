@@ -179,10 +179,10 @@
 \begin{tcolorbox}[outcomebox]
   By the end of this lab, you will be able to:
   \begin{itemize}
-    \item Configure a Python environment for robotic control using Mamba or venv.
-    \item Establish and verify communication with the Dobot Magician over USB-serial.
-    \item Understand the relationship between relative and absolute joint angles.
-    \item Manually calculate and verify Forward Kinematics (FK) for a 4-axis arm.
+    \item Set up a Python virtual environment for robotic control.
+    \item Connect to the Dobot Magician over USB-serial using the GUI.
+    \item Move individual joints and understand each joint's role and limits.
+    \item Observe how joint angles map to the end-effector position using live pose readout.
   \end{itemize}
 \end{tcolorbox}
 
@@ -190,24 +190,25 @@
 \section{Overview}
 % ──────────────────────────────────────────────────────────────────────────────
 
-This lab session focuses on setting up your development environment and verifying the connection with the \textbf{Dobot Magician} (USB-serial). Run the scripts directly from \texttt{magician/}.
+This lab introduces the \textbf{Dobot Magician} robotic arm.
+You will set up your development environment, connect to the robot via a
+\textbf{graphical user interface (GUI)}, and explore how joint angles control the arm.
 
 \begin{tcolorbox}[infobox, title={Week 1 Note}]
 MG400 (Ethernet/TCP-IP) exercises are covered in the Week 1 handout (\texttt{lab01}).
 See \texttt{Students/01\_SecondWeek/} for the MG400 student scripts.
 \end{tcolorbox}
 
-\subsection*{Included Scripts}
+\subsection*{Provided Files}
 
 \renewcommand{\arraystretch}{1.5}
 \begin{tabularx}{\linewidth}{@{}lX@{}}
   \toprule
-  \textbf{Script} & \textbf{Purpose} \\
+  \textbf{File} & \textbf{Purpose} \\
   \midrule
-  \multicolumn{2}{@{}l@{}}{\textit{Dobot Magician (\texttt{Students/00\_IntroductionWeek/magician/})}} \\
-  \texttt{01\_init\_check.py} & Verifies USB connection, clears alarms, and moves to safe ready pose. Run first. \\
-  \texttt{02\_joint\_control.py} & Interactive REPL: enter joint angles in degrees to move joints. \\
-  \texttt{03\_relative\_joint\_control.py} & Body-frame FK exercise: enter relative joint angles, observe the conversion chain. \\
+  \texttt{00\_magician\_gui.py} & GUI application: port discovery, connection, alarm clearing, joint control, live pose readout. \\
+  \texttt{utils.py} & Shared helper functions (safe bounds, port finder, move wrappers). \\
+  \texttt{requirements.txt} & Python dependencies (install with \texttt{pip}). \\
   \bottomrule
 \end{tabularx}
 
@@ -215,38 +216,30 @@ See \texttt{Students/01\_SecondWeek/} for the MG400 student scripts.
 \section{Quick Start Guide}
 % ──────────────────────────────────────────────────────────────────────────────
 
-\subsection{Dobot Magician (USB-serial)}
-
-\begin{tcolorbox}[setupbox, title={Magician — Mamba (Recommended)}]
+\begin{tcolorbox}[setupbox, title={Environment Setup — Python venv}]
+\textbf{Linux:}
 \begin{lstlisting}[style=BashStyle]
-# 1. Activate environment and install
-mamba activate dobot
-pip install -r Students/00_IntroductionWeek/magician/requirements.txt
-
-# 2. Verify connection
-cd Students/00_IntroductionWeek/magician
-python 01_init_check.py
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r magician/requirements.txt
+cd magician
+python 00_magician_gui.py
 \end{lstlisting}
-\end{tcolorbox}
 
-\begin{tcolorbox}[setupbox, title={Magician — Python venv}]
+\textbf{Windows (PowerShell):}
 \begin{lstlisting}[style=BashStyle]
-python3 -m venv .venv          # Linux/macOS
-python -m venv .venv           # Windows PowerShell
-source .venv/bin/activate      # Linux/macOS
-# .venv\Scripts\Activate.ps1   # Windows PowerShell
-pip install -r Students/00_IntroductionWeek/magician/requirements.txt
-cd Students/00_IntroductionWeek/magician
-python 01_init_check.py
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r magician\requirements.txt
+cd magician
+python 00_magician_gui.py
 \end{lstlisting}
 \end{tcolorbox}
 
 
 % ──────────────────────────────────────────────────────────────────────────────
-\section{Hardware Configuration}
+\section{Hardware Setup}
 % ──────────────────────────────────────────────────────────────────────────────
-
-\subsection{Dobot Magician (USB-serial)}
 
 \begin{enumerate}
   \item \textbf{Surface:} Place on a flat, stable surface. Clear a \qty{40}{\cm} radius around the base.
@@ -258,16 +251,15 @@ python 01_init_check.py
 \textbf{Status Signals:}
 \begin{itemize}
   \item \textbf{Green LED + Single Beep:} Ready.
-  \item \textbf{Red LED + Rapid Beeping:} Alarm state — run \texttt{01\_init\_check.py} to clear.
+  \item \textbf{Red LED + Rapid Beeping:} Alarm state — click \textbf{Clear Alarms} in the GUI.
   \item \textbf{Yellow/Flashing LED:} Busy (homing or executing a command).
 \end{itemize}
 
-
 % ──────────────────────────────────────────────────────────────────────────────
-\section{Software and OS Setup}
+\section{OS-Specific Notes}
 % ──────────────────────────────────────────────────────────────────────────────
 
-\subsection{Linux Setup (Dobot Magician only)}
+\subsection{Linux}
 Users must have permission to access serial devices. Run the following once:
 \begin{lstlisting}[style=BashStyle]
 sudo usermod -a -G dialout $USER
@@ -275,36 +267,50 @@ sudo usermod -a -G dialout $USER
 \end{lstlisting}
 The Magician typically appears as \texttt{/dev/ttyUSB0} or \texttt{/dev/ttyACM0}.
 
-\subsection{Windows Setup}
-The driver is usually handled by Windows Update. To find the port:
+\subsection{Windows}
+The driver is usually handled by Windows Update. To find the port manually:
 \begin{enumerate}
   \item Open \textbf{Device Manager}.
   \item Expand \textbf{Ports (COM \& LPT)}.
   \item Look for \textbf{Silicon Labs CP210x USB to UART Bridge} (e.g., \texttt{COM3}).
 \end{enumerate}
+The GUI auto-discovers the port, so manual lookup is typically unnecessary.
 
-\subsection{macOS Setup}
-Modern macOS versions include the driver. The device will appear as:
-\texttt{/dev/cu.usbserial-*} or \texttt{/dev/cu.SLAB\_USBtoUART}.
 
 % ──────────────────────────────────────────────────────────────────────────────
-\section{Dobot Magician Reference (USB-serial)}
+\section{The Dobot Magician}
 % ──────────────────────────────────────────────────────────────────────────────
 
-\subsection{Coordinate System (Cartesian)}
+The \textbf{Dobot Magician} is a 4-axis desktop robotic arm with:
+\begin{itemize}
+  \item \textbf{Reach:} $\approx$\qty{320}{\mm} maximum.
+  \item \textbf{Payload:} \qty{500}{\g} at full extension.
+  \item \textbf{Repeatability:} $\pm$\qty{0.2}{\mm}.
+  \item \textbf{Communication:} USB-serial (CP210x chip).
+\end{itemize}
+
+The arm has two main segments connected by revolute joints:
+\begin{itemize}
+  \item \textbf{Upper arm (L1):} \qty{135}{\mm} — from the shoulder (J2) to the elbow.
+  \item \textbf{Forearm (L2):} \qty{147}{\mm} — from the elbow to the end-effector.
+\end{itemize}
+
+A \textbf{parallel linkage} on J3 keeps the forearm's firmware angle relative to the upper arm (body-frame), rather than world-frame absolute.
+
+\subsection{Coordinate System}
 
 \begin{minipage}[t]{0.45\linewidth}
 \vspace{0pt}
-\begin{tikzpicture}[>=Stealth, thick]
+\begin{tikzpicture}[>={Stealth}, thick]
   % Grid/Base
   \fill[gray!10] (0,0) -- (2.4,0) -- (1.6,-0.9) -- (-0.8,-0.9) -- cycle;
   \draw[gray!30] (0,0) -- (2.4,0) -- (1.6,-0.9) -- (-0.8,-0.9) -- cycle;
-  
+
   % Axes
   \draw[->, AxisRed, line width=1.5pt] (0,0) -- (2.4,0) node[right]{\small\textbf{X}};
   \draw[->, AxisBlue, line width=1.5pt] (0,0) -- (-1.0,-0.75) node[left]{\small\textbf{Y}};
   \draw[->, AxisGreen, line width=1.5pt] (0,0) -- (0,2.4) node[above, AxisGreen]{\small\textbf{Z}};
-  
+
   % Origin
   \filldraw[black] (0,0) circle (2pt);
   \node[below right, font=\tiny, DimGray] at (0,0) {Base Center};
@@ -322,7 +328,9 @@ Modern macOS versions include the driver. The device will appear as:
 \end{itemize}
 \end{minipage}
 
-\subsection{Joint Definitions and Safe Limits}
+\subsection{Joint Definitions and Limits}
+
+Each joint controls a different degree of freedom. The GUI enforces these limits automatically (values are clamped before sending to the robot).
 
 \begin{tabularx}{\linewidth}{@{}llXl@{}}
   \toprule
@@ -348,114 +356,34 @@ Modern macOS versions include the driver. The device will appear as:
 \end{tabularx}
 
 
+
 % ──────────────────────────────────────────────────────────────────────────────
-\section{Forward Kinematics Exercise (Script 03)}
+\section{Using the GUI}
 % ──────────────────────────────────────────────────────────────────────────────
 
-Script \texttt{03\_relative\_joint\_control.py} introduces the concept of
-\textbf{body-frame (relative) joint angles} and makes the FK transformation
-chain visible in the terminal output.
+\begin{enumerate}
+  \item \textbf{Launch:} \texttt{python 00\_magician\_gui.py}
+  \item \textbf{Connect:} Select the port (auto-discovered with a star marker) and click \textbf{Connect}. The GUI clears any alarms and homes the robot automatically.
+  \item \textbf{Move Joints:} Use the spinboxes and \textbf{+/$-$} buttons to set a target angle, then click \textbf{Move} for that joint, or \textbf{Send All} to move all four joints at once.
+  \item \textbf{Live Pose:} The right panel shows the current X, Y, Z, R and J1--J4 values, updated every \qty{500}{\ms}.
+  \item \textbf{Joint Limits:} The limits panel shows the safe range for each joint.
+  \item \textbf{Details:} The log panel at the bottom shows connection events, alarms, and move commands.
+\end{enumerate}
 
-\subsection{What Are Relative Joint Angles?}
-
-\begin{tcolorbox}[infobox, title={Body-Frame vs.\ World-Frame Angles}]
-Each joint angle can be measured from two different reference directions:
-\begin{center}
-\renewcommand{\arraystretch}{1.4}
-\begin{tabularx}{0.95\linewidth}{@{}lXX@{}}
-  \toprule
-  \textbf{Joint} & \textbf{Relative (body-frame)} & \textbf{Absolute (world-frame)} \\
-  \midrule
-  J1 & Base rotation from world X-axis & Same as relative \\
-  J2 & Shoulder elevation from horizontal & Same as relative \\
-  J3 & Elbow offset \textit{from the upper arm} & $= \mathrm{J2} + \mathrm{J3_{rel}}$ \\
-  J4 & Wrist offset \textit{from the forearm}   & $= \mathrm{J3_{abs}} + \mathrm{J4_{rel}}$ \\
-  \bottomrule
-\end{tabularx}
-\end{center}
-J1 and J2 are identical in both conventions.  J3 and J4 are where they differ:
-a relative J3 of \qty{10}{\degree} means the forearm is \qty{10}{\degree} above the upper arm,
-regardless of how high the shoulder is.
-\end{tcolorbox}
-
-\subsection{Conversion Chain}
-
-The script applies this chain before every move:
-\begin{align*}
-  j_{3,\text{abs}} &= j_{2,\text{rel}} + j_{3,\text{rel}} \\
-  j_{4,\text{abs}} &= j_{3,\text{abs}} + j_{4,\text{rel}}
-                    = j_{2,\text{rel}} + j_{3,\text{rel}} + j_{4,\text{rel}}
-\end{align*}
-
-\textbf{Firmware note:} the Dobot Magician uses a parallel linkage and
-its firmware already interprets the J3 channel as a body-frame offset (so
-$j_{3,\text{fw}} = j_{3,\text{rel}}$ trivially). Only J4 needs the absolute
-wrist angle: $j_{4,\text{fw}} = j_{4,\text{abs}}$.
-
-\subsection{Worked Example (Dobot Magician)}
-
-Input: \texttt{0 20 10 0} (all relative)
-
-\begin{tabularx}{\linewidth}{@{}lX@{}}
-  \toprule
-  \textbf{Step} & \textbf{Value} \\
-  \midrule
-  $j_{3,\text{abs}}$ & $= \qty{20}{\degree} + \qty{10}{\degree} = \qty{30}{\degree}$ \\
-  $j_{4,\text{abs}}$ & $= \qty{30}{\degree} + \qty{0}{\degree}  = \qty{30}{\degree}$ \\
-  $j_{3,\text{fw}}$  & $= \qty{10}{\degree}$ (trivial for Magician) \\
-  $j_{4,\text{fw}}$  & $= \qty{30}{\degree}$ (= $j_{4,\text{abs}}$) \\
-  FK reach           & $= 135\cos(\qty{20}{\degree})+147\cos(\qty{30}{\degree}) \approx \qty{254}{\mm}$ \\
-  FK height          & $= 135\sin(\qty{20}{\degree})+147\sin(\qty{30}{\degree}) \approx \qty{120}{\mm}$ \\
-  \bottomrule
-\end{tabularx}
-
-\begin{tcolorbox}[safetybox, title={Safety Note}]
-Joint bounds are always applied to the \textbf{firmware angles} (absolute),
-not the relative inputs.  Entering $j_{3,\text{rel}} = \qty{10}{\degree}$ when
-$j_{2,\text{rel}} = \qty{80}{\degree}$ would produce $j_{3,\text{abs}} = \qty{90}{\degree}$,
-which exceeds the J3 firmware bound of \qty{85}{\degree} and will be clamped with a
-warning before the move executes.
-\end{tcolorbox}
-
-\subsection{Usage and Terminal Output}
-
-\begin{lstlisting}[style=BashStyle]
-cd Students/00_IntroductionWeek/magician
-python 03_relative_joint_control.py
-\end{lstlisting}
-
-Sample terminal output for input \texttt{0 20 10 0}:
-
-\begin{lstlisting}[style=BashStyle]
-Abs: J1=  0.00  J2= 20.00  J3= 30.00  J4= 30.00
-Rel: J1=  0.00  J2= 20.00  J3= 10.00  J4=  0.00
-> 0 20 10 0
-
-  Relative:  J1_rel=   0.00  J2_rel=  20.00  J3_rel=  10.00  J4_rel=   0.00
-  Absolute:  j1_abs=   0.00  j2_abs=  20.00  j3_abs=  30.00  j4_abs=  30.00
-  Firmware:  j1_fw=    0.00  j2_fw=   20.00  j3_fw=   10.00  j4_fw=   30.00
-  [FK]       X= 254.17  Y=   0.00  Z= 119.72  R= 30.00
-\end{lstlisting}
-
-\textbf{Challenge:} before running the script, calculate the expected X, Y, Z
-by hand using the FK formulas. Then compare your answer with the \texttt{[FK]}
-line in the terminal.
 
 % ──────────────────────────────────────────────────────────────────────────────
 \section{Troubleshooting}
 % ──────────────────────────────────────────────────────────────────────────────
 
-\subsection{Dobot Magician}
-
-\begin{tcolorbox}[infobox, title={Magician: Common Connection Issues}]
+\begin{tcolorbox}[infobox, title={Common Connection Issues}]
 \rowcolors{2}{white}{ToneBlueBg}
 \begin{tabularx}{\linewidth}{@{}lX@{}}
   \toprule
   \textbf{Symptom} & \textbf{Recommended Action} \\
   \midrule
   \texttt{Access Denied} & Ensure \textbf{DobotStudio} and other Python scripts are closed. \\
-  \texttt{Device not found} & Verify both USB and Power cables. Check \texttt{ls /dev/tty*} (Unix). \\
-  Motors don't move & Check the \qty{12}{\V} supply. If light is red, run \texttt{01\_init\_check.py}. \\
+  \texttt{Device not found} & Verify both USB and Power cables. Click \textbf{Refresh} in the GUI to refresh ports. \\
+  Motors don't move & Check the \qty{12}{\V} supply. If LED is red, click \textbf{Clear Alarms} in the GUI. \\
   Erratic movement & Reset to neutral posture and power cycle the robot. \\
   \bottomrule
 \end{tabularx}
@@ -469,8 +397,8 @@ line in the terminal.
 \begin{tcolorbox}[safetybox, title={Mandatory Safety Rules}]
 \begin{enumerate}
   \item \textbf{Workspace:} Maintain a clean area. No cables in the reach zone (\qty{40}{\cm} radius around the base).
-  \item \textbf{Initialization:} Always run \texttt{01\_init\_check.py} before starting your own scripts.
-  \item \textbf{Helper Functions:} Use \texttt{safe\_move()} from \texttt{utils.py}. It enforces software limits.
+  \item \textbf{Initialization:} Always let the GUI complete its connection sequence (alarm clear + homing) before sending commands.
+  \item \textbf{Joint Limits:} The GUI clamps all values to the safe ranges shown in the Joint Limits panel.
   \item \textbf{Supervision:} Stay within reach of the power cable at all times.
 \end{enumerate}
 \end{tcolorbox}
