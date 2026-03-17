@@ -29,11 +29,11 @@ import argparse
 import time
 
 from utils_mg400 import (
+    add_target_arguments,
     check_errors,
     close_all,
-    connect,
+    connect_from_args_or_exit,
     go_home,
-    MG400_IP,
     ROBOT_IPS,
     SPEED_DEFAULT,
 )
@@ -74,28 +74,24 @@ def safe_move_ext(move_api, pos_mm, speed=50, acc=50):
 # Main demo
 # ---------------------------------------------------------------------------
 
-# Default target: Robot 3 has the sliding rail
+# Default target: Robot 2 has the sliding rail
 SLIDER_ROBOT_ID = 2
 SLIDER_IP       = ROBOT_IPS[SLIDER_ROBOT_ID]   # "192.168.2.10"
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="MG400 slider introduction")
-    parser.add_argument("--ip", default=SLIDER_IP,
-                        help="MG400 IP address (default: Robot 2 = 192.168.2.10)")
-    parser.add_argument("--robot", type=int, default=SLIDER_ROBOT_ID,
-                        choices=[1, 2, 3, 4], metavar="N",
-                        help="Robot number 1-4 (overrides --ip, default: 3)")
+    add_target_arguments(
+        parser,
+        default_ip=SLIDER_IP,
+        ip_help="MG400 IP address (default: Robot 2 = 192.168.2.10)",
+    )
     args = parser.parse_args()
-    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
+    ip, dashboard, move_api = connect_from_args_or_exit(args)
 
-    print(f"Connecting to MG400 at {ip} (Robot 3 has the sliding rail) ...")
+    print(f"Connecting to MG400 at {ip} (Robot 2 has the sliding rail) ...")
 
-    dashboard = None
-    move_api  = None
     try:
-        dashboard, move_api = connect(ip)
-
         # Enable and clear errors
         dashboard.EnableRobot()
         time.sleep(1.5)
@@ -128,7 +124,6 @@ def main() -> None:
         safe_move_ext(move_api, 0.0)
 
         print("\nDemo complete. Slider is back at home position (0 mm).")
-
     finally:
         if dashboard is not None:
             try:

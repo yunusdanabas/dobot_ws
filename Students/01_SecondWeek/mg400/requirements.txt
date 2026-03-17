@@ -8,6 +8,6 @@
 # Note: dobot_api.py must be available via the SDK git clone:
 #   cd dobot_ws
 #   git clone https://github.com/Dobot-Arm/TCP-IP-4Axis-Python.git vendor/TCP-IP-4Axis-Python
-# See CLAUDE.md for full network setup instructions.
+# See ../../docs/README.md and ../../../mg400/MG400_info.md for setup notes.
 
 numpy>=1.26,<3

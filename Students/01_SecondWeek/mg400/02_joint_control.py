@@ -24,15 +24,14 @@ import argparse
 import time
 
 from utils_mg400 import (
+    add_target_arguments,
     check_errors,
     clamp,
     close_all,
-    connect,
+    connect_from_args_or_exit,
     go_home,
-    MG400_IP,
     parse_angles,
     parse_pose,
-    ROBOT_IPS,
     SPEED_DEFAULT,
 )
 
@@ -85,14 +84,11 @@ def read_state(dashboard):
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="MG400 interactive joint-angle REPL")
-    parser.add_argument("--ip", default=MG400_IP, help="MG400 IP address")
-    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
-                        help="Robot number 1-4 (overrides --ip)")
+    add_target_arguments(parser)
     args = parser.parse_args()
-    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
+    ip, dashboard, move_api = connect_from_args_or_exit(args)
 
     print(f"Connecting to MG400 at {ip} ...")
-    dashboard, move_api = connect(ip)
 
     try:
         check_errors(dashboard)

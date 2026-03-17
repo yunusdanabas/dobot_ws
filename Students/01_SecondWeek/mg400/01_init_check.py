@@ -10,7 +10,7 @@ Run this first to verify that your hardware and network setup are working.
 
 Usage:
     python 01_init_check.py               # Robot 1 (192.168.2.7)
-    python 01_init_check.py --robot 2     # Robot 2 (192.168.2.7)
+    python 01_init_check.py --robot 2     # Robot 2 (192.168.2.10)
     python 01_init_check.py --ip 192.168.2.7
 
 Prerequisites:
@@ -24,15 +24,14 @@ import argparse
 import time
 
 from utils_mg400 import (
+    add_target_arguments,
     check_errors,
     close_all,
-    connect,
+    connect_from_args_or_exit,
     go_home,
-    MG400_IP,
     parse_angles,
     parse_pose,
     READY_POSE,
-    ROBOT_IPS,
     safe_move,
     SPEED_DEFAULT,
 )
@@ -50,19 +49,13 @@ def print_joints(label: str, j1: float, j2: float, j3: float, j4: float) -> None
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="MG400 initialization check")
-    parser.add_argument("--ip", default=MG400_IP, help="MG400 IP address")
-    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
-                        help="Robot number 1-4 (overrides --ip)")
+    add_target_arguments(parser)
     args = parser.parse_args()
-    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
+    ip, dashboard, move_api = connect_from_args_or_exit(args)
 
     print(f"Connecting to MG400 at {ip} ...")
 
-    dashboard = None
-    move_api  = None
     try:
-        dashboard, move_api = connect(ip)
-
         # Enable the robot
         dashboard.EnableRobot()
         time.sleep(1.5)
@@ -98,7 +91,6 @@ def main() -> None:
         print_joints("Joints:   ", j1, j2, j3, j4)
 
         print("\n[OK] Initialization complete.")
-
     finally:
         if dashboard is not None:
             try:
