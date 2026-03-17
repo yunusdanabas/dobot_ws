@@ -23,15 +23,14 @@ import argparse
 import time
 
 from utils_mg400 import (
-    connect,
+    add_target_arguments,
     close_all,
     check_errors,
+    connect_from_args_or_exit,
     go_home,
     parse_pose,
     parse_angles,
     SPEED_DEFAULT,
-    MG400_IP,
-    ROBOT_IPS,
 )
 
 # Joint-space waypoints (degrees): (J1, J2, J3, J4)
@@ -47,13 +46,10 @@ JOINT_WAYPOINTS = [
 
 def main():
     parser = argparse.ArgumentParser(description="MG400 joint angles demo")
-    parser.add_argument("--ip", default=MG400_IP, help="MG400 IP address")
-    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
-                        help="Robot number 1-4 (overrides --ip)")
+    add_target_arguments(parser)
     args = parser.parse_args()
-    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
+    _, dashboard, move_api, feed = connect_from_args_or_exit(args)
 
-    dashboard, move_api, feed = connect(ip)
     try:
         check_errors(dashboard)
         dashboard.EnableRobot()

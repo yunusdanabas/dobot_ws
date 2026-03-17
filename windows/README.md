@@ -180,24 +180,24 @@ Pop-Location
 - Magician port not found: run `python magician\01_find_port.py` and, if needed, set `$env:DOBOT_PORT`
 - MG400 connection fails: confirm robot power, cable, `192.168.2.100/24`, and `ping <robot-ip>`
 - Teleop exits immediately: run it from a normal interactive PowerShell or Windows Terminal tab
-- **DobotStudio background service holds the port** — DobotStudio v2+ can leave `DobotstudioService.exe`
+- DobotStudio background service holds port: DobotStudio v2+ can leave `DobotstudioService.exe`
   running after closing the UI. Open Task Manager (Ctrl+Shift+Esc) → Details tab, find and end
   `DobotstudioService.exe`, or disable it via Services (`services.msc`).
-- **`python` opens Microsoft Store** — Windows 11 App Execution Aliases redirect the bare `python`
+- `python` opens Microsoft Store: Windows 11 App Execution Aliases redirect the bare `python`
   command to the Store. Disable via Settings → Apps → Advanced app settings → App execution aliases,
   then toggle off the Python stubs. Use the venv's `python` or the `py` launcher instead.
-- **COM port number changes after replug** — Windows assigns a new COM number when a USB device
+- COM port number changes after replug: Windows assigns a new COM number when a USB device
   plugs into a different physical port. Always use the same USB port, or re-run
   `python magician\01_find_port.py` and update `$env:DOBOT_PORT`.
-- **Windows Firewall blocks MG400 TCP ports** — Even when `ping` succeeds, Defender Firewall may
+- Windows Firewall blocks MG400 TCP ports: even when `ping` succeeds, Defender Firewall may
   block outbound TCP to ports 29999/30003/30004. Add an outbound allow rule for `192.168.2.0/24`
   in Defender Firewall Advanced Security, or temporarily disable the private network firewall.
-- **`Set-MG400StaticIp.ps1 -Apply` requires Administrator** — Right-click Windows Terminal →
+- `Set-MG400StaticIp.ps1 -Apply` requires Administrator: right-click Windows Terminal →
   "Run as Administrator". Run `Get-NetAdapter` first to confirm the exact interface alias name.
-- **Visualizer window steals keyboard focus** — The pyqtgraph window may come to the foreground
-  and stop keyboard input reaching the teleop loop. Alt-Tab back to the terminal to restore input,
+- Visualizer window steals keyboard focus: the pyqtgraph window may come to the foreground and
+  stop keyboard input reaching the teleop loop. Alt-Tab back to the terminal to restore input,
   or run with `--no-viz`.
-- **`pip install` fails with "Microsoft Visual C++ required"** — Some PyQt5/pyqtgraph wheels need
+- `pip install` fails with "Microsoft Visual C++ required": some PyQt5/pyqtgraph wheels need
   the MSVC build tools. Fix: `pip install --only-binary :all: PyQt5 pyqtgraph`, or install
   Visual C++ Build Tools via `winget install Microsoft.VisualCppBuildTools`.
 

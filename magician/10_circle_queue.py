@@ -12,7 +12,8 @@ Setup:
     git clone https://github.com/AlexGustafsson/dobot-python.git
 
 Run with (after setting DOBOT_PYTHON_PATH):
-    export DOBOT_PYTHON_PATH=/path/to/dobot-python
+    export DOBOT_PYTHON_PATH=/path/to/dobot-python          # Linux/macOS
+    $env:DOBOT_PYTHON_PATH='C:\\path\\to\\dobot-python'    # Windows PowerShell
     python scripts/10_circle_queue.py
 """
 

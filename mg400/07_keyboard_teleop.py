@@ -32,20 +32,23 @@ Usage:
 """
 
 import argparse
-import select
 import sys
-import termios
-import tty
 import time
+from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from terminal_keys import TerminalKeyReader
 
 from utils_mg400 import (
-    connect,
+    add_target_arguments,
     close_all,
     check_errors,
+    connect_from_args_or_exit,
     go_home,
     parse_pose,
-    MG400_IP,
-    ROBOT_IPS,
 )
 from viz_mg400 import RobotViz
 
@@ -58,47 +61,6 @@ JOG_SPEED  = 20   # % — teleop jog speed (lower = more precise)
 
 # Minimum interval between MoveJog("") + pose reads (s)
 STATUS_INTERVAL = 0.2
-
-
-def _set_raw(fd):
-    old = termios.tcgetattr(fd)
-    tty.setraw(fd)
-    return old
-
-
-def _restore(fd, old):
-    termios.tcsetattr(fd, termios.TCSADRAIN, old)
-
-
-def _read_key(fd, timeout=0.02):
-    """Non-blocking key read from stdin fd. Returns None if no key available."""
-    ready, _, _ = select.select([sys.stdin], [], [], timeout)
-    if not ready:
-        return None
-    ch = sys.stdin.read(1)
-    if not ch:
-        return None
-    if ch == "\x1b":
-        r2, _, _ = select.select([sys.stdin], [], [], 0.05)
-        if not r2:
-            return "esc"
-        c1 = sys.stdin.read(1)
-        if c1 != "[":
-            return "esc"
-        r3, _, _ = select.select([sys.stdin], [], [], 0.02)
-        if not r3:
-            return "esc"
-        c2 = sys.stdin.read(1)
-        if c2 == "A":
-            return "up"
-        if c2 == "B":
-            return "down"
-        if c2 == "C":
-            return "right"
-        if c2 == "D":
-            return "left"
-        return "esc"
-    return ch.lower() if ch else None
 
 
 # Map key → MoveJog axis string
@@ -116,17 +78,14 @@ _KEY_TO_JOG = {
 
 def main():
     parser = argparse.ArgumentParser(description="MG400 keyboard teleop")
-    parser.add_argument("--ip", default=MG400_IP, help="MG400 IP address")
-    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
-                        help="Robot number 1-4 (overrides --ip)")
+    add_target_arguments(parser)
     parser.add_argument("--viz", action="store_true", help="Enable visualizer")
     args = parser.parse_args()
-    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
 
-    if not sys.stdin.isatty():
+    if not TerminalKeyReader.require_tty():
         sys.exit("[Error] Run from an interactive terminal (keyboard input required).")
 
-    dashboard, move_api, feed = connect(ip)
+    ip, dashboard, move_api, feed = connect_from_args_or_exit(args)
     viz        = RobotViz(enabled=args.viz)
     suction_on = False
 
@@ -148,13 +107,10 @@ def main():
         current_jog = None   # currently active MoveJog axis string (None = stopped)
         last_status = 0.0
 
-        fd      = sys.stdin.fileno()
-        old_term = _set_raw(fd)
-
-        try:
+        with TerminalKeyReader() as keys:
             while True:
                 now = time.perf_counter()
-                key = _read_key(fd)
+                key = keys.read_key(timeout_s=0.02)
 
                 if key is not None:
                     # Special actions
@@ -211,9 +167,6 @@ def main():
                     except Exception:
                         pass
                     last_status = now
-
-        finally:
-            _restore(fd, old_term)
 
         print()   # newline after \r status line
 

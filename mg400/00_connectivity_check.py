@@ -4,7 +4,7 @@
 Phase 1 — Network layer:
   * Ping each robot IP
   * TCP port probe all three ports (29999/30003/30004)
-  * Detect lingering connections from this PC via ss
+  * Detect lingering connections from this PC via platform-native tools
 
 Phase 2 — Application layer (dashboard-only, for robots with port 29999 open):
   * Connect via DobotApiDashboard (try/finally guaranteed cleanup)
@@ -33,6 +33,14 @@ from typing import Optional, Tuple
 from utils_mg400 import (
     DASHBOARD_PORT, FEED_PORT, MOVE_PORT, ROBOT_IPS, ROBOT_MODE,
     parse_angles, parse_error_ids, parse_pose, parse_robot_mode,
+    query_dashboard_version,
+)
+
+
+PORTS_TO_CHECK = (
+    ("dashboard", DASHBOARD_PORT),
+    ("move", MOVE_PORT),
+    ("feed", FEED_PORT),
 )
 
 # ---------------------------------------------------------------------------
@@ -44,7 +52,7 @@ def ping_host(ip: str, count: int = 3, timeout: int = 1) -> bool:
     """Return True if host responds to ICMP ping."""
     try:
         result = subprocess.run(
-            ["ping", "-c", str(count), "-W", str(timeout), ip],
+            _build_ping_command(ip, count=count, timeout=timeout),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=False,
@@ -52,6 +60,16 @@ def ping_host(ip: str, count: int = 3, timeout: int = 1) -> bool:
         return result.returncode == 0
     except Exception:
         return False
+
+
+def _build_ping_command(ip: str, count: int = 3, timeout: int = 1,
+                        platform_name: str | None = None) -> list[str]:
+    """Return the platform-appropriate ping command."""
+    platform_name = platform_name or sys.platform
+    if platform_name == "win32":
+        timeout_ms = max(int(timeout * 1000), 1)
+        return ["ping", "-n", str(count), "-w", str(timeout_ms), ip]
+    return ["ping", "-c", str(count), "-W", str(max(int(timeout), 1)), ip]
 
 
 def check_tcp_port(ip: str, port: int, timeout: float = 2.0) -> Tuple[bool, str]:
@@ -67,13 +85,19 @@ def check_tcp_port(ip: str, port: int, timeout: float = 2.0) -> Tuple[bool, str]
         return False, f"{type(exc).__name__}: {exc}"
 
 
-def check_local_connections(ip: str) -> list[str]:
-    """Return list of established connections from this PC to the robot IP.
+def check_local_connections(ip: str) -> tuple[list[str], str | None]:
+    """Return established connections from this PC to the robot IP.
 
-    Uses 'ss -tnp dst <ip>' so PID and process name are included in output.
-    Returns one string per connection (header line excluded).
+    The second tuple element carries a note when process inspection is not
+    supported or the platform tool is unavailable.
     """
-    connections: list[str] = []
+    if sys.platform == "win32":
+        return _check_local_connections_windows(ip)
+    return _check_local_connections_posix(ip)
+
+
+def _check_local_connections_posix(ip: str) -> tuple[list[str], str | None]:
+    """Use ss on POSIX hosts when available."""
     try:
         result = subprocess.run(
             ["ss", "-tnp", "dst", ip],
@@ -81,28 +105,100 @@ def check_local_connections(ip: str) -> list[str]:
             text=True,
             check=False,
         )
-        lines = result.stdout.strip().splitlines()
-        for line in lines[1:]:   # skip column-header row
-            if line.strip():
-                connections.append(line.strip())
+    except FileNotFoundError:
+        return [], "Local connection scan unavailable: 'ss' is not installed."
+    except Exception as exc:
+        return [], f"Local connection scan failed: {exc}"
+
+    connections: list[str] = []
+    lines = result.stdout.strip().splitlines()
+    for line in lines[1:]:   # skip column-header row
+        if line.strip():
+            connections.append(line.strip())
+    if result.returncode not in (0, 1) and not connections:
+        return [], "Local connection scan returned no usable output."
+    return connections, None
+
+
+def _check_local_connections_windows(ip: str) -> tuple[list[str], str | None]:
+    """Use netstat/tasklist on Windows to find established TCP connections."""
+    try:
+        result = subprocess.run(
+            ["netstat", "-ano", "-p", "TCP"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        return [], "Local connection scan unavailable: 'netstat' was not found."
+    except Exception as exc:
+        return [], f"Local connection scan failed: {exc}"
+
+    if result.returncode not in (0, 1):
+        return [], "Local connection scan unavailable: netstat failed."
+
+    connections: list[str] = []
+    process_names_available = True
+    for raw_line in result.stdout.splitlines():
+        line = raw_line.strip()
+        if not line or not line.upper().startswith("TCP"):
+            continue
+        parts = re.split(r"\s+", line)
+        if len(parts) < 5:
+            continue
+        _proto, local_addr, remote_addr, state, pid = parts[:5]
+        if state.upper() != "ESTABLISHED":
+            continue
+        if not remote_addr.lower().startswith(f"{ip.lower()}:"):
+            continue
+        proc_name = _lookup_process_name_windows(pid)
+        if proc_name is None:
+            process_names_available = False
+            connections.append(f"{local_addr} -> {remote_addr} pid={pid}")
+        else:
+            connections.append(f"{local_addr} -> {remote_addr} pid={pid} proc={proc_name}")
+
+    note = None
+    if connections and not process_names_available:
+        note = "Process names unavailable; showing only PIDs from netstat."
+    return connections, note
+
+
+def _lookup_process_name_windows(pid: str) -> str | None:
+    """Return process image name for a Windows PID, or None if unavailable."""
+    try:
+        result = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
     except Exception:
-        pass
-    return connections
+        return None
+
+    line = result.stdout.strip()
+    if not line or line.startswith("INFO:"):
+        return None
+
+    match = re.match(r'"([^"]+)"', line)
+    return match.group(1) if match else None
 
 
 def phase1_network(ip: str) -> dict:
     """Ping + TCP port probes + lingering-connection scan. Return results dict."""
     reachable = ping_host(ip)
-    ports: dict = {}
-    for name, port in [
-        ("dashboard", DASHBOARD_PORT),
-        ("move",      MOVE_PORT),
-        ("feed",      FEED_PORT),
-    ]:
-        ok, msg = check_tcp_port(ip, port)
-        ports[name] = {"ok": ok, "detail": msg, "port": port}
-    local_conns = check_local_connections(ip)
-    return {"reachable": reachable, "ports": ports, "local_connections": local_conns}
+    ports = {
+        name: {"ok": ok, "detail": detail, "port": port}
+        for name, port in PORTS_TO_CHECK
+        for ok, detail in [check_tcp_port(ip, port)]
+    }
+    local_conns, local_note = check_local_connections(ip)
+    return {
+        "reachable": reachable,
+        "ports": ports,
+        "local_connections": local_conns,
+        "local_connections_note": local_note,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -140,13 +236,33 @@ def _format_query_error(name: str, exc: Exception, payload: str | None = None) -
     return f"{name}: {exc}; raw={_sanitize_payload(payload)!r}"
 
 
-def _query_get_version(dashboard) -> str:
-    """Query firmware version across SDK variants."""
-    if hasattr(dashboard, "GetVersion"):
-        return _normalize_response(dashboard.GetVersion())
-    if hasattr(dashboard, "sendRecvMsg"):
-        return _normalize_response(dashboard.sendRecvMsg("GetVersion()"))
-    raise AttributeError("dashboard object has neither GetVersion nor sendRecvMsg")
+def _close_quietly(obj) -> None:
+    """Close an SDK object without raising."""
+    if obj is None:
+        return
+    try:
+        obj.close()
+    except Exception:
+        pass
+
+
+def _query_and_parse(result: dict, label: str, query_fn, parse_fn=None):
+    """Run one dashboard query and optionally parse the response."""
+    try:
+        raw = _normalize_response(query_fn())
+        result["raw"][label] = raw
+    except Exception as exc:
+        result["query_errors"].append(_format_query_error(label, exc))
+        return None
+
+    if parse_fn is None:
+        return raw
+
+    try:
+        return parse_fn(raw)
+    except Exception as exc:
+        result["query_errors"].append(_format_query_error(label, exc, raw))
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -181,60 +297,31 @@ def phase2_application(ip: str, dash_open: bool) -> Optional[dict]:
     try:
         dashboard = DobotApiDashboard(ip, DASHBOARD_PORT)
 
-        try:
-            ver_resp = _query_get_version(dashboard)
-            result["raw"]["GetVersion"] = ver_resp
-            result["version"] = ver_resp.strip() or None
-        except Exception as exc:
-            result["query_errors"].append(_format_query_error("GetVersion", exc))
+        version = _query_and_parse(
+            result,
+            "GetVersion",
+            lambda: query_dashboard_version(dashboard),
+        )
+        result["version"] = version.strip() or None if version else None
 
-        try:
-            mode_resp = _normalize_response(dashboard.RobotMode())
-            result["raw"]["RobotMode"] = mode_resp
-            mode_raw  = parse_robot_mode(mode_resp)
-            result["mode_raw"]  = mode_raw
+        mode_raw = _query_and_parse(result, "RobotMode", dashboard.RobotMode, parse_robot_mode)
+        if mode_raw is not None:
+            result["mode_raw"] = mode_raw
             result["mode_name"] = ROBOT_MODE.get(mode_raw, f"UNKNOWN({mode_raw})")
-        except Exception as exc:
-            result["mode_name"] = f"ERR: {exc}"
-            result["query_errors"].append(
-                _format_query_error("RobotMode", exc, result["raw"].get("RobotMode"))
-            )
 
-        try:
-            err_resp = _normalize_response(dashboard.GetErrorID())
-            result["raw"]["GetErrorID"] = err_resp
-            result["error_ids"] = parse_error_ids(err_resp)
-        except Exception as exc:
-            result["query_errors"].append(
-                _format_query_error("GetErrorID", exc, result["raw"].get("GetErrorID"))
-            )
-
-        try:
-            pose_resp = _normalize_response(dashboard.GetPose())
-            result["raw"]["GetPose"] = pose_resp
-            result["pose"] = parse_pose(pose_resp)
-        except Exception as exc:
-            result["query_errors"].append(
-                _format_query_error("GetPose", exc, result["raw"].get("GetPose"))
-            )
-
-        try:
-            angle_resp = _normalize_response(dashboard.GetAngle())
-            result["raw"]["GetAngle"] = angle_resp
-            result["angles"] = parse_angles(angle_resp)
-        except Exception as exc:
-            result["query_errors"].append(
-                _format_query_error("GetAngle", exc, result["raw"].get("GetAngle"))
-            )
+        result["error_ids"] = _query_and_parse(
+            result,
+            "GetErrorID",
+            dashboard.GetErrorID,
+            parse_error_ids,
+        )
+        result["pose"] = _query_and_parse(result, "GetPose", dashboard.GetPose, parse_pose)
+        result["angles"] = _query_and_parse(result, "GetAngle", dashboard.GetAngle, parse_angles)
 
     except Exception as exc:
         result["connect_error"] = str(exc)
     finally:
-        if dashboard is not None:
-            try:
-                dashboard.close()
-            except Exception:
-                pass
+        _close_quietly(dashboard)
 
     return result
 
@@ -264,11 +351,7 @@ def _attempt_clear_error(ip: str) -> str:
     except Exception as exc:
         return f"ClearError attempt failed: {exc}"
     finally:
-        if dashboard is not None:
-            try:
-                dashboard.close()
-            except Exception:
-                pass
+        _close_quietly(dashboard)
 
 
 def phase3_remediation(ip: str, p1: dict, p2: Optional[dict]) -> list[str]:
@@ -366,6 +449,75 @@ def phase3_remediation(ip: str, p1: dict, p2: Optional[dict]) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# Printing helpers
+# ---------------------------------------------------------------------------
+
+
+def _print_phase1(ip: str, p1: dict) -> None:
+    """Print Phase 1 network results."""
+    print(f"    Ping:      {'OK' if p1['reachable'] else 'FAILED'}")
+    for name, info in p1["ports"].items():
+        tag = "OPEN    " if info["ok"] else "REFUSED "
+        print(f"    Port {info['port']:5d} ({name:9s}): {tag}  {info['detail']}")
+
+    local_conns = p1["local_connections"]
+    if local_conns:
+        print(f"\n    *** Lingering connections from this PC to {ip} ***")
+        for conn in local_conns:
+            print(f"        {conn}")
+        return
+
+    note = p1.get("local_connections_note")
+    print(f"    {note}" if note else "    No lingering connections from this PC.")
+
+
+def _print_phase2(p2: Optional[dict]) -> None:
+    """Print Phase 2 dashboard results."""
+    if p2 is None or p2.get("connect_error"):
+        err = (p2 or {}).get("connect_error", "unknown error")
+        print(f"    Dashboard API connection failed: {err}")
+        return
+
+    version = p2.get("version")
+    print(f"    Version:   {version if version else 'unavailable'}")
+
+    mode_raw = p2.get("mode_raw")
+    mode_name = p2.get("mode_name", "N/A")
+    label = f"{mode_raw}={mode_name}" if mode_raw is not None else mode_name
+    print(f"    Mode:      {label}")
+
+    err_ids = p2.get("error_ids")
+    if err_ids is None:
+        print("    Error IDs: unavailable (payload parse failed)")
+    else:
+        print(f"    Error IDs: {err_ids if err_ids else 'none'}")
+
+    pose = p2.get("pose")
+    if pose:
+        x, y, z, r = pose
+        print(f"    Pose:      X={x:.1f}  Y={y:.1f}  Z={z:.1f}  R={r:.1f}  mm/°")
+
+    angles = p2.get("angles")
+    if angles:
+        j1, j2, j3, j4 = angles
+        print(f"    Joints:    J1={j1:.1f}  J2={j2:.1f}  J3={j3:.1f}  J4={j4:.1f}  °")
+
+    query_errors = p2.get("query_errors", [])
+    if not query_errors:
+        return
+
+    print("    API payload issues:")
+    for issue in query_errors:
+        print(f"      - {issue}")
+
+    raw_payloads = p2.get("raw", {})
+    if raw_payloads:
+        print("    Raw payload snippets:")
+        for cmd, payload in raw_payloads.items():
+            print(f"      - {cmd}: {_sanitize_payload(payload)!r}")
+
+
+# ---------------------------------------------------------------------------
 # Per-robot report
 # ---------------------------------------------------------------------------
 
@@ -377,26 +529,12 @@ def check_robot(robot_id: int, ip: str) -> dict:
     print(f"  Robot {robot_id}  ({ip})")
     print(f"{'=' * width}")
 
-    # ── Phase 1 ──────────────────────────────────────────────────────────
     print("\n  [Phase 1] Network Layer")
     p1        = phase1_network(ip)
     reachable = p1["reachable"]
     ports     = p1["ports"]
+    _print_phase1(ip, p1)
 
-    print(f"    Ping:      {'OK' if reachable else 'FAILED'}")
-    for name, info in ports.items():
-        tag = "OPEN    " if info["ok"] else "REFUSED "
-        print(f"    Port {info['port']:5d} ({name:9s}): {tag}  {info['detail']}")
-
-    local_conns = p1["local_connections"]
-    if local_conns:
-        print(f"\n    *** Lingering connections from this PC to {ip} ***")
-        for conn in local_conns:
-            print(f"        {conn}")
-    else:
-        print(f"    No lingering connections from this PC.")
-
-    # ── Phase 2 ──────────────────────────────────────────────────────────
     print("\n  [Phase 2] Application Layer")
     p2: Optional[dict] = None
     if not reachable:
@@ -404,42 +542,9 @@ def check_robot(robot_id: int, ip: str) -> dict:
     elif not ports["dashboard"]["ok"]:
         print("    Skipped — dashboard port not accessible.")
     else:
-        p2 = phase2_application(ip, ports["dashboard"]["ok"])
-        if p2 is None or p2.get("connect_error"):
-            err = (p2 or {}).get("connect_error", "unknown error")
-            print(f"    Dashboard API connection failed: {err}")
-        else:
-            version = p2.get("version")
-            print(f"    Version:   {version if version else 'unavailable'}")
-            mode_raw  = p2.get("mode_raw")
-            mode_name = p2.get("mode_name", "N/A")
-            label = f"{mode_raw}={mode_name}" if mode_raw is not None else mode_name
-            print(f"    Mode:      {label}")
-            err_ids = p2.get("error_ids")
-            if err_ids is None:
-                print("    Error IDs: unavailable (payload parse failed)")
-            else:
-                print(f"    Error IDs: {err_ids if err_ids else 'none'}")
-            pose = p2.get("pose")
-            if pose:
-                x, y, z, r = pose
-                print(f"    Pose:      X={x:.1f}  Y={y:.1f}  Z={z:.1f}  R={r:.1f}  mm/°")
-            angles = p2.get("angles")
-            if angles:
-                j1, j2, j3, j4 = angles
-                print(f"    Joints:    J1={j1:.1f}  J2={j2:.1f}  J3={j3:.1f}  J4={j4:.1f}  °")
-            query_errors = p2.get("query_errors", [])
-            if query_errors:
-                print("    API payload issues:")
-                for issue in query_errors:
-                    print(f"      - {issue}")
-                raw_payloads = p2.get("raw", {})
-                if raw_payloads:
-                    print("    Raw payload snippets:")
-                    for cmd, payload in raw_payloads.items():
-                        print(f"      - {cmd}: {_sanitize_payload(payload)!r}")
+        p2 = phase2_application(ip, True)
+        _print_phase2(p2)
 
-    # ── Phase 3 ──────────────────────────────────────────────────────────
     print("\n  [Phase 3] Remediation")
     actions = phase3_remediation(ip, p1, p2)
     for action in actions:

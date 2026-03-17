@@ -27,9 +27,9 @@ Robot IP map (192.168.2.x subnet):
   Robot 4 → 192.168.2.6
 
 MG400 coordinate notes (verified from Dobot hardware spec v1.1):
-  - X: 0–440 mm  (safe inner limit ≈60 mm due to base singularity)
+  - X: 60–400 mm (safe; hardware max 440 mm, inner limit due to base singularity)
   - Y: ±220 mm   (symmetric around centre)
-  - Z: 0–150 mm  (Z CANNOT go negative — 0 mm = mounting surface)
+  - Z: 5–140 mm  (safe; hardware max 150 mm — Z cannot go negative)
   - R: ±170°     (end-effector rotation; 10° safety margin inside J4 hardware limit of ±180°)
 
 Joint ranges (per DT-MG400-4R075-01 hardware guide V1.1, Table 2.1):
@@ -41,10 +41,14 @@ Joint ranges (per DT-MG400-4R075-01 hardware guide V1.1, Table 2.1):
 
 from __future__ import annotations
 
+from argparse import ArgumentParser, Namespace
+import os
 import re
+import socket
 import sys
 import threading
 import time
+from contextlib import closing
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -86,10 +90,15 @@ ROBOT_IPS = {
     3: "192.168.2.9",
     4: "192.168.2.6",
 }
-MG400_IP       = ROBOT_IPS[1]   # default: Robot 1
+ROBOT_IDS      = tuple(ROBOT_IPS)
+MG400_IP_ENV   = "DOBOT_MG400_IP"
+MG400_IP       = os.environ.get(MG400_IP_ENV, ROBOT_IPS[1])   # default: Robot 1, env-overridable
+PC_STATIC_IP   = "192.168.2.100"
+PC_PREFIX_LEN  = 24
 DASHBOARD_PORT = 29999
 MOVE_PORT      = 30003
 FEED_PORT      = 30004
+REQUIRED_PORTS = (DASHBOARD_PORT, MOVE_PORT, FEED_PORT)
 
 # Operating safe bounds (inside the 440 mm hardware envelope).
 # Z is non-negative: 0 mm = mounting surface, max 150 mm above.
@@ -155,6 +164,119 @@ def connect(ip: str = MG400_IP):
     return dashboard, move_api, feed
 
 
+def resolve_target_ip(ip: str | None = None, robot: int | None = None) -> str:
+    """Return the selected MG400 target IP from robot, explicit IP, or env."""
+    if robot is not None:
+        return ROBOT_IPS[robot]
+    return ip or os.environ.get(MG400_IP_ENV, ROBOT_IPS[1])
+
+
+def add_target_arguments(
+    parser: ArgumentParser,
+    *,
+    default_ip: str = MG400_IP,
+    default_robot: int | None = None,
+    ip_help: str = "MG400 IP address",
+    robot_help: str = "Robot number 1-4 (overrides --ip)",
+) -> None:
+    """Attach the standard MG400 `--ip/--robot` arguments to a parser."""
+    parser.add_argument("--ip", default=default_ip, help=ip_help)
+    parser.add_argument(
+        "--robot",
+        type=int,
+        default=default_robot,
+        choices=ROBOT_IDS,
+        metavar="N",
+        help=robot_help,
+    )
+
+
+def format_direct_connect_help(ip: str, platform_name: str | None = None) -> str:
+    """Return a concise setup hint for direct MG400 Ethernet connections."""
+    platform_name = platform_name or sys.platform
+    lines = [
+        "Direct connection checklist:",
+        "  1. Power the robot and connect Ethernet directly to the PC",
+        f"  2. Set the PC adapter IPv4 to {PC_STATIC_IP}/{PC_PREFIX_LEN} (255.255.255.0)",
+        f"  3. Verify with: ping {ip}",
+        f"  4. Use --ip {ip} or set {MG400_IP_ENV}",
+    ]
+    return "\n".join(lines + _platform_direct_connect_lines(platform_name))
+
+
+def _platform_direct_connect_lines(platform_name: str) -> list[str]:
+    """Return OS-specific direct-connect guidance with lazy Windows imports."""
+    if platform_name == "win32":
+        return _load_windows_direct_connect_lines()
+    return [
+        "Linux/macOS:",
+        "  Use Network Manager or nmcli to set the adapter to 192.168.2.100/24.",
+    ]
+
+
+def _load_windows_direct_connect_lines() -> list[str]:
+    """Load Windows-only MG400 guidance lazily."""
+    try:
+        from windows.mg400_support import get_direct_connect_help_lines
+    except Exception:
+        return [
+            "Windows PowerShell (from repo root):",
+            "  .\\windows\\Set-MG400StaticIp.ps1   # dry run only",
+            "  Get-NetAdapter",
+            "  Run PowerShell as Administrator for the -Apply step",
+            "  .\\windows\\Set-MG400StaticIp.ps1 -InterfaceAlias '<EthernetName>' -Apply",
+            "  The PowerShell helper does not change the adapter unless you add -Apply.",
+        ]
+    return get_direct_connect_help_lines()
+
+
+def _probe_required_ports(ip: str, ports: tuple[int, ...] = REQUIRED_PORTS, timeout: float = 1.5) -> None:
+    """Fail fast with a normal socket error before the vendor SDK prints noise."""
+    for port in ports:
+        try:
+            with closing(socket.create_connection((ip, port), timeout=timeout)):
+                pass
+        except OSError as exc:
+            raise OSError(f"TCP port {port} is unreachable: {exc}") from exc
+
+
+def _connection_error(ip: str, message: str) -> ConnectionError:
+    """Build a consistent connection error with setup guidance."""
+    return ConnectionError(f"{message}\n{format_direct_connect_help(ip)}")
+
+
+def connect_with_diagnostics(ip: str = MG400_IP):
+    """Connect to MG400 or raise ConnectionError with setup guidance."""
+    try:
+        _probe_required_ports(ip)
+    except OSError as exc:
+        raise _connection_error(ip, f"Cannot reach MG400 at {ip}: {exc}") from exc
+
+    try:
+        return connect(ip)
+    except ConnectionRefusedError as exc:
+        raise _connection_error(ip, f"Connection refused for MG400 at {ip}.") from exc
+    except OSError as exc:
+        raise _connection_error(ip, f"Cannot connect to MG400 at {ip}: {exc}") from exc
+    except Exception as exc:
+        raise _connection_error(ip, f"MG400 connection setup failed at {ip}: {exc}") from exc
+
+
+def resolve_target_from_args(args: Namespace) -> str:
+    """Resolve the MG400 target IP from parsed CLI arguments."""
+    return resolve_target_ip(ip=getattr(args, "ip", None), robot=getattr(args, "robot", None))
+
+
+def connect_from_args_or_exit(args: Namespace):
+    """Resolve CLI target args, connect, or exit with a clean script error."""
+    ip = resolve_target_from_args(args)
+    try:
+        dashboard, move_api, feed = connect_with_diagnostics(ip)
+    except ConnectionError as exc:
+        raise SystemExit(f"[Error] {exc}") from exc
+    return ip, dashboard, move_api, feed
+
+
 def close_all(dashboard, move_api, feed) -> None:
     """Close all three API connections safely."""
     for obj in (dashboard, move_api, feed):
@@ -186,6 +308,21 @@ def close_all_robots(robots: dict) -> None:
 # ---------------------------------------------------------------------------
 # Response parsing
 # ---------------------------------------------------------------------------
+
+
+def query_dashboard_version(dashboard) -> str:
+    """Query firmware version across SDK variants."""
+    if hasattr(dashboard, "GetVersion"):
+        response = dashboard.GetVersion()
+    elif hasattr(dashboard, "sendRecvMsg"):
+        response = dashboard.sendRecvMsg("GetVersion()")
+    else:
+        raise AttributeError("dashboard object has neither GetVersion nor sendRecvMsg")
+
+    match = re.match(r"\s*([-+]?\d+),", str(response))
+    if match and int(match.group(1)) != 0:
+        raise ValueError(f"GetVersion returned status {match.group(1)}")
+    return response
 
 
 def parse_pose(response: str) -> tuple[float, float, float, float]:

@@ -22,7 +22,7 @@ advanced options such as visualization flags, CSV logging, and feedback helpers.
 **Magician:**
 ```python
 from pydobotplus import Dobot
-bot = Dobot(port="/dev/ttyUSB0")   # one object, one serial port
+bot = Dobot(port="COM3")   # e.g. "COM3" on Windows or "/dev/ttyUSB0" on Linux
 ```
 
 **MG400:**

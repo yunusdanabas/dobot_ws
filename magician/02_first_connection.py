@@ -13,7 +13,7 @@ from utils import find_port, unpack_pose
 
 
 def main():
-    PORT = find_port()          # auto-detect; override with e.g. PORT = "/dev/ttyUSB0"
+    PORT = find_port()          # auto-detect; override with e.g. PORT = "COM3" or "/dev/ttyUSB0"
 
     if PORT is None:
         sys.exit("[Error] No serial port found. Run 01_find_port.py first.")

@@ -180,7 +180,7 @@
   By the end of this lab, you will be able to:
   \begin{itemize}
     \item Configure a Python environment for robotic control using Mamba or venv.
-    \item Establish and verify communication with both Magician (Serial) and MG400 (TCP/IP).
+    \item Establish and verify communication with the Dobot Magician over USB-serial.
     \item Understand the relationship between relative and absolute joint angles.
     \item Manually calculate and verify Forward Kinematics (FK) for a 4-axis arm.
   \end{itemize}
@@ -190,7 +190,12 @@
 \section{Overview}
 % ──────────────────────────────────────────────────────────────────────────────
 
-This lab session focuses on setting up your development environment and verifying the connection with your assigned robotic arm. The lab supports two robots: the \textbf{Dobot Magician} (USB-serial) and the \textbf{DOBOT MG400} (TCP/IP over Ethernet). Scripts are organized into separate folders — \texttt{magician/} and \texttt{mg400/}.
+This lab session focuses on setting up your development environment and verifying the connection with the \textbf{Dobot Magician} (USB-serial). Run the scripts directly from \texttt{magician/}.
+
+\begin{tcolorbox}[infobox, title={Week 1 Note}]
+MG400 (Ethernet/TCP-IP) exercises are covered in the Week 1 handout (\texttt{lab01}).
+See \texttt{Students/01\_SecondWeek/} for the MG400 student scripts.
+\end{tcolorbox}
 
 \subsection*{Included Scripts}
 
@@ -199,15 +204,10 @@ This lab session focuses on setting up your development environment and verifyin
   \toprule
   \textbf{Script} & \textbf{Purpose} \\
   \midrule
-  \multicolumn{2}{@{}l@{}}{\textit{Dobot Magician (\texttt{magician/})}} \\
+  \multicolumn{2}{@{}l@{}}{\textit{Dobot Magician (\texttt{Students/00\_IntroductionWeek/magician/})}} \\
   \texttt{01\_init\_check.py} & Verifies USB connection, clears alarms, and moves to safe ready pose. Run first. \\
   \texttt{02\_joint\_control.py} & Interactive REPL: enter joint angles in degrees to move joints. \\
   \texttt{03\_relative\_joint\_control.py} & Body-frame FK exercise: enter relative joint angles, observe the conversion chain. \\
-  \midrule
-  \multicolumn{2}{@{}l@{}}{\textit{DOBOT MG400 (\texttt{mg400/})}} \\
-  \texttt{01\_init\_check.py} & Verifies Ethernet connection, enables robot, moves to \texttt{READY\_POSE}. \\
-  \texttt{02\_joint\_control.py} & Interactive REPL: enter joint angles with FK preview and joint clamping. \\
-  \texttt{03\_relative\_joint\_control.py} & Body-frame FK exercise: enter relative joint angles, observe conversion and prediction. \\
   \bottomrule
 \end{tabularx}
 
@@ -221,48 +221,26 @@ This lab session focuses on setting up your development environment and verifyin
 \begin{lstlisting}[style=BashStyle]
 # 1. Activate environment and install
 mamba activate dobot
-pip install -r magician/requirements.txt
+pip install -r Students/00_IntroductionWeek/magician/requirements.txt
 
 # 2. Verify connection
-cd magician
+cd Students/00_IntroductionWeek/magician
 python 01_init_check.py
 \end{lstlisting}
 \end{tcolorbox}
 
 \begin{tcolorbox}[setupbox, title={Magician — Python venv}]
 \begin{lstlisting}[style=BashStyle]
-python3 -m venv .venv
-source .venv/bin/activate    # Linux/macOS
-# .venv\Scripts\activate     # Windows
-pip install -r magician/requirements.txt
-cd magician && python 01_init_check.py
+python3 -m venv .venv          # Linux/macOS
+python -m venv .venv           # Windows PowerShell
+source .venv/bin/activate      # Linux/macOS
+# .venv\Scripts\Activate.ps1   # Windows PowerShell
+pip install -r Students/00_IntroductionWeek/magician/requirements.txt
+cd Students/00_IntroductionWeek/magician
+python 01_init_check.py
 \end{lstlisting}
 \end{tcolorbox}
 
-\subsection{DOBOT MG400 (Ethernet/TCP-IP)}
-
-\begin{tcolorbox}[setupbox, title={MG400 — One-time SDK Setup}]
-\begin{lstlisting}[style=BashStyle]
-# Clone the official Dobot SDK into the vendor/ directory
-cd dobot_ws
-git clone https://github.com/Dobot-Arm/TCP-IP-4Axis-Python.git \
-    vendor/TCP-IP-4Axis-Python
-# Set PC Ethernet to static IP 192.168.2.100 / 255.255.255.0
-# Verify: ping 192.168.2.7
-\end{lstlisting}
-\end{tcolorbox}
-
-\begin{tcolorbox}[setupbox, title={MG400 — Run Scripts}]
-\begin{lstlisting}[style=BashStyle]
-pip install -r mg400/requirements.txt
-
-# Default: Robot 1 (192.168.2.7)
-cd mg400 && python 01_init_check.py
-
-# Select a specific robot (1-4)
-python 01_init_check.py --robot 2
-\end{lstlisting}
-\end{tcolorbox}
 
 % ──────────────────────────────────────────────────────────────────────────────
 \section{Hardware Configuration}
@@ -284,28 +262,6 @@ python 01_init_check.py --robot 2
   \item \textbf{Yellow/Flashing LED:} Busy (homing or executing a command).
 \end{itemize}
 
-\subsection{DOBOT MG400 (Ethernet/TCP-IP)}
-
-\begin{enumerate}
-  \item \textbf{Surface:} Place on a flat, stable surface. Clear a \qty{50}{\cm} radius around the base (\qty{440}{\mm} reach).
-  \item \textbf{Power:} Connect the DC power adapter. Wait for the status LED to turn solid green.
-  \item \textbf{Network:} Connect an Ethernet cable from the robot to your PC.
-  \item \textbf{PC Static IP:} Set your Ethernet adapter to \texttt{192.168.2.100}, netmask \texttt{255.255.255.0}.
-  \item \textbf{Verify:} \texttt{ping 192.168.2.7} — should respond with $<$\qty{1}{\ms} latency.
-\end{enumerate}
-
-\textbf{Robot IP addresses (192.168.2.x subnet):}
-
-\begin{tabularx}{0.8\linewidth}{@{}llX@{}}
-  \toprule
-  \textbf{Robot} & \textbf{IP Address} & \textbf{CLI flag} \\
-  \midrule
-  1 & 192.168.2.7  & \texttt{--robot 1} (default) \\
-  2 & 192.168.2.9  & \texttt{--robot 2} \\
-  3 & 192.168.2.10 & \texttt{--robot 3} \\
-  4 & 192.168.2.8  & \texttt{--robot 4} \\
-  \bottomrule
-\end{tabularx}
 
 % ──────────────────────────────────────────────────────────────────────────────
 \section{Software and OS Setup}
@@ -318,7 +274,6 @@ sudo usermod -a -G dialout $USER
 # Log out and log back in for changes to take effect.
 \end{lstlisting}
 The Magician typically appears as \texttt{/dev/ttyUSB0} or \texttt{/dev/ttyACM0}.
-The MG400 uses Ethernet (no serial permission needed).
 
 \subsection{Windows Setup}
 The driver is usually handled by Windows Update. To find the port:
@@ -392,40 +347,6 @@ Modern macOS versions include the driver. The device will appear as:
   \bottomrule
 \end{tabularx}
 
-% ──────────────────────────────────────────────────────────────────────────────
-\section{DOBOT MG400 Reference (Ethernet/TCP-IP)}
-% ──────────────────────────────────────────────────────────────────────────────
-
-\subsection{Coordinate System}
-
-The MG400 uses the same X/Y/Z/R convention as the Magician, but with different operating bounds:
-
-\begin{tabularx}{\linewidth}{@{}lXll@{}}
-  \toprule
-  \textbf{Axis} & \textbf{Safe Range} & \textbf{Unit} & \textbf{Note} \\
-  \midrule
-  X (Reach)   & \qtyrange{60}{400}{\mm}  & mm  & Inner limit $\approx$\qty{60}{\mm} (singularity) \\
-  Y (Slew)    & $\pm$\qty{220}{\mm}   & mm  & Symmetric full lateral sweep \\
-  Z (Height)  & \qtyrange{5}{140}{\mm}   & mm  & \textbf{Z cannot go negative} (0\,mm = surface) \\
-  R (Rotation) & $\pm$\qty{170}{\degree}  & deg & End-effector wrist rotation \\
-  \bottomrule
-\end{tabularx}
-
-\vspace{6pt}
-\textbf{READY\_POSE} = \texttt{(300, 0, 50, 0)} — safe home position above the surface.
-
-\subsection{Joint Definitions and Limits}
-
-\begin{tabularx}{\linewidth}{@{}llXl@{}}
-  \toprule
-  \textbf{Joint} & \textbf{Motion} & \textbf{Safe Range} & \textbf{Units} \\
-  \midrule
-  J1 & Base Rotation      & $\pm$\qty{170}{\degree}              & deg \\
-  J2 & Shoulder Elevation & \qtyrange{-5}{90}{\degree} & deg \\
-  J3 & Elbow              & \qtyrange{-140}{5}{\degree} & deg \\
-  J4 & Wrist Rotation     & $\pm$\qty{170}{\degree}              & deg \\
-  \bottomrule
-\end{tabularx}
 
 % ──────────────────────────────────────────────────────────────────────────────
 \section{Forward Kinematics Exercise (Script 03)}
@@ -466,14 +387,10 @@ The script applies this chain before every move:
                     = j_{2,\text{rel}} + j_{3,\text{rel}} + j_{4,\text{rel}}
 \end{align*}
 
-\textbf{Magician firmware note:} the Dobot Magician uses a parallel linkage and
+\textbf{Firmware note:} the Dobot Magician uses a parallel linkage and
 its firmware already interprets the J3 channel as a body-frame offset (so
 $j_{3,\text{fw}} = j_{3,\text{rel}}$ trivially). Only J4 needs the absolute
 wrist angle: $j_{4,\text{fw}} = j_{4,\text{abs}}$.
-
-\textbf{MG400 firmware note:} the MG400 firmware expects fully absolute angles,
-so both J3 and J4 must be accumulated: $j_{3,\text{fw}} = j_{3,\text{abs}}$
-and $j_{4,\text{fw}} = j_{4,\text{abs}}$.
 
 \subsection{Worked Example (Dobot Magician)}
 
@@ -503,12 +420,8 @@ warning before the move executes.
 \subsection{Usage and Terminal Output}
 
 \begin{lstlisting}[style=BashStyle]
-# Dobot Magician
-cd magician && python 03_relative_joint_control.py
-
-# DOBOT MG400
-cd mg400 && python 03_relative_joint_control.py
-python 03_relative_joint_control.py --robot 2
+cd Students/00_IntroductionWeek/magician
+python 03_relative_joint_control.py
 \end{lstlisting}
 
 Sample terminal output for input \texttt{0 20 10 0}:
@@ -548,33 +461,17 @@ line in the terminal.
 \end{tabularx}
 \end{tcolorbox}
 
-\subsection{DOBOT MG400}
-
-\begin{tcolorbox}[infobox, title={MG400: Common Issues}]
-\rowcolors{2}{white}{ToneBlueBg}
-\begin{tabularx}{\linewidth}{@{}lX@{}}
-  \toprule
-  \textbf{Symptom} & \textbf{Recommended Action} \\
-  \midrule
-  \texttt{dobot\_api.py} missing & Clone the SDK into \texttt{vendor/TCP-IP-4Axis-Python}. \\
-  \texttt{Connection refused} & Check Ethernet cable, verify PC IP is \texttt{192.168.2.100}, ping robot. \\
-  Robot in ERROR mode & Run \texttt{check\_errors(dashboard)} or press E-stop, release, power-cycle. \\
-  Z motion stops early & MG400 Z cannot go negative. Ensure all targets have $Z \geq \qty{5}{\mm}$. \\
-  \bottomrule
-\end{tabularx}
-\end{tcolorbox}
 
 % ──────────────────────────────────────────────────────────────────────────────
 \section{Safety Mandates}
 % ──────────────────────────────────────────────────────────────────────────────
 
-\begin{tcolorbox}[safetybox, title={Mandatory Safety Rules (Both Robots)}]
+\begin{tcolorbox}[safetybox, title={Mandatory Safety Rules}]
 \begin{enumerate}
-  \item \textbf{Workspace:} Maintain a clean area. No cables in the reach zone (\qty{40}{\cm} for Magician; \qty{50}{\cm} for MG400).
+  \item \textbf{Workspace:} Maintain a clean area. No cables in the reach zone (\qty{40}{\cm} radius around the base).
   \item \textbf{Initialization:} Always run \texttt{01\_init\_check.py} before starting your own scripts.
   \item \textbf{Helper Functions:} Use \texttt{safe\_move()} from \texttt{utils.py}. It enforces software limits.
-  \item \textbf{Supervision:} Stay within reach of the power cable (or E-stop for MG400).
-  \item \textbf{MG400 only:} Z cannot go negative ($Z \geq \qty{5}{\mm}$). Never command below surface.
+  \item \textbf{Supervision:} Stay within reach of the power cable at all times.
 \end{enumerate}
 \end{tcolorbox}
 

@@ -18,28 +18,24 @@ Usage:
 import argparse
 
 from utils_mg400 import (
-    connect,
+    add_target_arguments,
     close_all,
+    connect_from_args_or_exit,
     parse_pose,
     parse_angles,
     check_errors,
     go_home,
     SPEED_DEFAULT,
-    MG400_IP,
-    ROBOT_IPS,
 )
 
 
 def main():
     parser = argparse.ArgumentParser(description="MG400 first connection demo")
-    parser.add_argument("--ip", default=MG400_IP, help="MG400 IP address")
-    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
-                        help="Robot number 1-4 (overrides --ip)")
+    add_target_arguments(parser)
     args = parser.parse_args()
-    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
+    ip, dashboard, move_api, feed = connect_from_args_or_exit(args)
 
     print(f"Connecting to MG400 at {ip} ...")
-    dashboard, move_api, feed = connect(ip)
     print("  Connected: dashboard(29999), move(30003), feed(30004)")
 
     try:

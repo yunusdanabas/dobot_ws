@@ -21,16 +21,15 @@ import argparse
 import time
 
 from utils_mg400 import (
-    connect,
+    add_target_arguments,
     close_all,
     check_errors,
+    connect_from_args_or_exit,
     go_home,
     safe_move,
     SPEED_DEFAULT,
     JUMP_HEIGHT,
     SAFE_BOUNDS,
-    MG400_IP,
-    ROBOT_IPS,
 )
 from viz_mg400 import RobotViz
 
@@ -108,14 +107,11 @@ def place_down(dashboard, move_api) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="MG400 pick-and-place demo")
-    parser.add_argument("--ip", default=MG400_IP, help="MG400 IP address")
-    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
-                        help="Robot number 1-4 (overrides --ip)")
+    add_target_arguments(parser)
     parser.add_argument("--viz", action="store_true", help="Enable visualizer")
     args = parser.parse_args()
-    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
+    ip, dashboard, move_api, feed = connect_from_args_or_exit(args)
 
-    dashboard, move_api, feed = connect(ip)
     viz = RobotViz(enabled=args.viz)
     viz.attach(move_api)
 

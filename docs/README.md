@@ -13,6 +13,7 @@ already live throughout the repository.
 
 ## Core References
 
+- [`dobot_control_options_comparison.md`](./dobot_control_options_comparison.md): canonical control options reference (all three library tracks, safety helpers, motion modes)
 - [`control_map.md`](./control_map.md): high-level control stack comparison (library tracks, syntax)
 - [`magician_vs_mg400.md`](./magician_vs_mg400.md): code-level comparison between the Magician and MG400 tracks
 - [`platform_differences.md`](./platform_differences.md): Linux/Windows/macOS platform specifics

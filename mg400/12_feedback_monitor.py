@@ -26,10 +26,9 @@ import time
 import numpy as np
 
 from utils_mg400 import (
-    connect,
+    add_target_arguments,
     close_all,
-    MG400_IP,
-    ROBOT_IPS,
+    connect_from_args_or_exit,
 )
 from viz_mg400 import RobotViz
 
@@ -106,19 +105,16 @@ def _feed_thread(feed) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="MG400 live feedback monitor")
-    parser.add_argument("--ip",    default=MG400_IP, help="MG400 IP address")
-    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
-                        help="Robot number 1-4 (overrides --ip)")
+    add_target_arguments(parser)
     parser.add_argument("--viz", action="store_true", help="Enable visualizer")
     parser.add_argument("--hz",    type=float, default=10.0,
                         help="Display/viz update rate in Hz (default 10)")
     args = parser.parse_args()
-    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
+    ip, dashboard, move_api, feed = connect_from_args_or_exit(args)
 
     interval = 1.0 / max(1.0, args.hz)
 
     print(f"Connecting to MG400 at {ip} ...")
-    dashboard, move_api, feed = connect(ip)
     print("  Connected: dashboard(29999), move(30003), feed(30004)")
     print("  Robot does NOT need to be enabled for pose monitoring.\n")
 

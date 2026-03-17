@@ -1,7 +1,7 @@
 """
 utils_slider.py — Slider helpers for MG400 + DT-AC-HDSR-001 sliding rail (ME403).
 
-The MG400 Sliding Rail Kit (model DT-AC-HDSR-001) extends Robot 3
+The MG400 Sliding Rail Kit (model DT-AC-HDSR-001) extends Robot 2
 (IP 192.168.2.10) with 800 mm of linear travel.
 
 Key API facts:
@@ -43,11 +43,12 @@ if str(_MG400_DIR) not in sys.path:
 
 # Re-export everything from the parent utils so slider scripts only need one import.
 from utils_mg400 import (           # noqa: E402
-    connect, close_all, connect_multi, close_all_robots,
+    add_target_arguments, connect, connect_from_args_or_exit, connect_with_diagnostics,
+    close_all, connect_multi, close_all_robots,
     clamp, safe_move, safe_rel_move, go_home,
-    parse_pose, parse_angles, parse_robot_mode,
+    parse_pose, parse_angles, parse_robot_mode, query_dashboard_version,
     check_errors, start_feedback_thread, wait_arrive,
-    ROBOT_IPS, READY_POSE, SAFE_BOUNDS, SPEED_DEFAULT, ROBOT_MODE,
+    ROBOT_IPS, READY_POSE, SAFE_BOUNDS, SPEED_DEFAULT, ROBOT_MODE, resolve_target_ip,
     current_pose,
 )
 

@@ -26,7 +26,8 @@ Run these in order:
 
 Notes:
 - `16_*` is intentionally unused (legacy gap kept for course continuity).
-- `07_keyboard_teleop_win.py` is a Windows-specific variant.
+- `07_keyboard_teleop.py` is the canonical teleop entrypoint on both Ubuntu and Windows.
+- On Windows you can override auto-detection with `DOBOT_PORT`; the full PowerShell workflow lives in [`../windows/README.md`](../windows/README.md).
 
 ## 2) Shared helpers used by numbered scripts
 

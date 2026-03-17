@@ -49,23 +49,28 @@ from pathlib import Path
 # SDK auto-discovery
 # ---------------------------------------------------------------------------
 
-_HERE        = Path(__file__).parent
-_VENDOR_PATH = _HERE.parent.parent.parent / "vendor" / "TCP-IP-4Axis-Python"
+_HERE          = Path(__file__).parent
+# standalone share: vendor/ sits next to mg400/ inside 01_SecondWeek/
+_VENDOR_LOCAL  = _HERE.parent / "vendor" / "TCP-IP-4Axis-Python"
+# full repo: vendor/ sits at dobot_ws root
+_VENDOR_REPO   = _HERE.parent.parent.parent / "vendor" / "TCP-IP-4Axis-Python"
 
 
 def _find_dobot_api() -> str:
     """Return the directory containing dobot_api.py, or raise ImportError."""
     if (_HERE / "dobot_api.py").exists():
         return str(_HERE)
-    if (_VENDOR_PATH / "dobot_api.py").exists():
-        return str(_VENDOR_PATH)
+    if (_VENDOR_LOCAL / "dobot_api.py").exists():
+        return str(_VENDOR_LOCAL)
+    if (_VENDOR_REPO / "dobot_api.py").exists():
+        return str(_VENDOR_REPO)
     raise ImportError(
         "dobot_api.py not found.\n"
-        "Clone the official SDK with:\n"
-        "  cd dobot_ws\n"
+        "Clone the official SDK next to this folder:\n"
+        "  cd 01_SecondWeek\n"
         "  git clone https://github.com/Dobot-Arm/TCP-IP-4Axis-Python.git "
         "vendor/TCP-IP-4Axis-Python\n"
-        "Or place dobot_api.py directly in Students/01_SecondWeek/mg400/."
+        "Or place dobot_api.py directly in mg400/."
     )
 
 

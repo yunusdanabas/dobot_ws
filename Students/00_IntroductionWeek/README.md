@@ -1,16 +1,44 @@
-# Intro Week Materials
+# Week 0 — Magician Intro
 
-This folder contains the simplified intro-week teaching copies. It is not a
-full mirror of the root workspaces.
+## Setup
 
-## Tracks
+Run all commands from inside this folder (`00_IntroductionWeek/`).
 
-- `magician/` — Dobot Magician intro scripts `01` to `03` plus a trimmed `utils.py`
-- `mg400/` — MG400 intro scripts `01` to `03` plus a trimmed `utils_mg400.py`
-- `Report Latex/` — report template, Magician quick-start, and reference notes
+### Linux / macOS
 
-## Start Points
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r magician/requirements.txt
+```
 
-- Magician quick-start: [`Report Latex/README.md`](./Report Latex/README.md)
-- Magician scripts: `magician/01_init_check.py`, `magician/02_joint_control.py`, `magician/03_relative_joint_control.py`
-- MG400 scripts: `mg400/01_init_check.py`, `mg400/02_joint_control.py`, `mg400/03_relative_joint_control.py`
+Magician serial permission (one-time, then re-login):
+
+```bash
+sudo usermod -a -G dialout $USER
+```
+
+### Windows (PowerShell)
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r magician\requirements.txt
+```
+
+## Magician Scripts
+
+```bash
+cd magician
+python 01_init_check.py
+python 02_joint_control.py
+python 03_relative_joint_control.py
+```
+
+## Report Template
+
+LaTeX template and quick-start notes: [`Report Latex/`](./Report%20Latex/)
+
+---
+
+For MG400 (Week 1), see [`../01_SecondWeek/README.md`](../01_SecondWeek/README.md).

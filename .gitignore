@@ -14,7 +14,6 @@ mg400/joint_log*.csv
 Students/00_IntroductionWeek/Report Latex/*.aux
 Students/00_IntroductionWeek/Report Latex/*.log
 Students/00_IntroductionWeek/Report Latex/*.out
-Students/00_IntroductionWeek/Report Latex/lab00_handout.pdf
 
 # AI / editor config (personal, not shared)
 CLAUDE.md
@@ -30,9 +29,10 @@ vendor/
 
 # Private notes
 Notes.md
+note.md
+copilot-researcher.md
+gemini-research-analyst.md
 
 # Non-public course materials
 Syllabus-ME403-202502.md
 research/
-docs/
-dobot_control_options_comparison.md

@@ -17,14 +17,13 @@ import argparse
 import time
 
 from utils_mg400 import (
-    connect,
+    add_target_arguments,
     close_all,
     check_errors,
+    connect_from_args_or_exit,
     go_home,
     safe_move,
     SPEED_DEFAULT,
-    MG400_IP,
-    ROBOT_IPS,
 )
 
 # ---------------------------------------------------------------------------
@@ -44,13 +43,10 @@ OUT_OF_BOUNDS = (300, 0, -20, 0)
 
 def main():
     parser = argparse.ArgumentParser(description="safe_move clamping demo")
-    parser.add_argument("--ip", default=MG400_IP, help="MG400 IP address")
-    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
-                        help="Robot number 1-4 (overrides --ip)")
+    add_target_arguments(parser)
     args = parser.parse_args()
-    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
+    _, dashboard, move_api, feed = connect_from_args_or_exit(args)
 
-    dashboard, move_api, feed = connect(ip)
     try:
         check_errors(dashboard)
         dashboard.EnableRobot()

@@ -13,6 +13,27 @@
 
 Verify connectivity: `ping 192.168.2.7`
 
+The MG400 script entrypoints are the same on Ubuntu and native Windows. For the
+native Windows setup, direct-Ethernet steps, and PowerShell commands, use
+[`../windows/README.md`](../windows/README.md).
+For the broader documentation map, use [`../docs/README.md`](../docs/README.md).
+
+### Windows Direct Cable Setup
+
+From the repo root:
+
+```powershell
+.\windows\Set-MG400StaticIp.ps1
+.\windows\Set-MG400StaticIp.ps1 -InterfaceAlias "Ethernet" -Apply
+python mg400\01_connect_test.py
+```
+
+If your robot is not using the lab-default IP, either pass `--ip <addr>` or set:
+
+```powershell
+$env:DOBOT_MG400_IP = "192.168.2.7"
+```
+
 
 
 ## Scripts (`mg400/01–17`)
@@ -38,8 +59,16 @@ Verify connectivity: `ping 192.168.2.7`
 | `17_joint_control_gui.py` | PyQt5 GUI: Absolute Joint / Relative Joint / XYZ Cartesian tabs, +/− step buttons, live pose readout, speed slider, Home + ESTOP, RobotViz integration |
 
 All scripts accept `--robot N` (N=1–4) or `--ip <addr>`.
+`07_keyboard_teleop.py` is the cross-platform terminal teleop entrypoint; no
+separate Windows teleop script is required.
 
-## Sliding Rail — Robot 3 (DT-AC-HDSR-001)
+### Connectivity Diagnostics
+
+- `00_connectivity_check.py` prints a detailed per-robot network and dashboard report
+- `00_connectivity_gui.py` provides the same checks in a GUI for lab troubleshooting
+- `00_raw_dashboard_probe.py` is the low-level raw socket probe for vendor-response debugging
+
+## Sliding Rail — Robot 2 (DT-AC-HDSR-001)
 
 Robot 2 (IP `192.168.2.10`) has a **DOBOT MG400 Sliding Rail Kit** attached.
 Hardware specs: 800 mm travel, ±0.05 mm repeat accuracy, 800 mm/s max speed.
@@ -62,7 +91,8 @@ Full hardware spec: see `dobot_slider_info.md` (repo root).
 | `slider/03_slider_arm_demo.py` | Coordinated arm + rail via `SyncAll()` (5 waypoints) |
 | `slider/04_slider_teleop.py` | Hybrid keyboard teleop: `MoveJog` (arm) + incremental `MovJExt` (slider) |
 
-All slider scripts default to `--robot 3`. Pass `--robot N` or `--ip <addr>` to override.
+All slider scripts default to `--robot 2`. Pass `--robot N` or `--ip <addr>` to override.
+`slider/04_slider_teleop.py` uses the same keybindings on Ubuntu and Windows.
 
 ### Key Slider API
 

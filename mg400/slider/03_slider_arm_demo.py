@@ -21,23 +21,23 @@ Prerequisites:
 
 Usage:
     python 03_slider_arm_demo.py
-    python 03_slider_arm_demo.py --robot 3 --viz
+    python 03_slider_arm_demo.py --robot 2 --viz
     python 03_slider_arm_demo.py --ip 192.168.2.10 --viz
 """
 
 import argparse
 
 from utils_slider import (
-    connect,
+    add_target_arguments,
     close_all,
     check_errors,
+    connect_from_args_or_exit,
     go_home,
     go_home_slider,
     safe_move,
     safe_move_ext,
     print_slider_status,
     SLIDER_IP,
-    ROBOT_IPS,
     SPEED_DEFAULT,
 )
 
@@ -56,19 +56,16 @@ COORD_WAYPOINTS = [
 
 def main():
     parser = argparse.ArgumentParser(description="MG400 coordinated arm + slider demo")
-    parser.add_argument("--ip", default=SLIDER_IP, help="MG400 IP address")
-    parser.add_argument("--robot", type=int, default=2, choices=[1, 2, 3, 4],
-                        metavar="N", help="Robot number 1-4 (overrides --ip)")
+    add_target_arguments(parser, default_ip=SLIDER_IP)
     parser.add_argument("--viz", action="store_true", help="Enable visualizer")
     args = parser.parse_args()
-    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
+    ip, dashboard, move_api, feed = connect_from_args_or_exit(args)
 
     # Import viz here so scripts without --viz don't need PyQt5 installed
     from viz_mg400 import RobotViz  # noqa: F401 (imported for side-effect-free viz)
     viz = RobotViz(enabled=args.viz)
 
     print(f"Connecting to MG400 (slider) at {ip} ...")
-    dashboard, move_api, feed = connect(ip)
     print("  Connected.")
 
     try:

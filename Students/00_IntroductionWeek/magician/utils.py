@@ -14,6 +14,8 @@ an unnecessary get_pose() round-trip and a noisy print() in the upstream
 move_to() implementation.
 """
 
+import os
+import sys
 import time
 
 from serial.tools import list_ports
@@ -40,15 +42,21 @@ SAFE_BOUNDS = {
 
 # Dobot Magician uses either CP210x (Silicon Labs) or CH340 (1A86) USB-serial chips
 DOBOT_KEYWORDS = ("Silicon Labs", "1A86", "USB2.0-Serial")
+DOBOT_PORT_ENV = "DOBOT_PORT"
 
 
 def find_port(keywords: tuple[str, ...] = DOBOT_KEYWORDS) -> str | None:
     """Return the first serial port matching any *keywords* (description or hwid).
 
-    Falls back to the first USB port (ttyUSB*, ttyACM*) if no keyword match.
-    Avoids ttyS* on Linux (virtual/COM ports that often cause I/O errors).
+    Honors the explicit environment override DOBOT_PORT when set.
+    Falls back to the most likely USB/UART device for the current platform
+    if no keyword match exists.
     Returns None if no ports are found at all.
     """
+    preferred = os.environ.get(DOBOT_PORT_ENV)
+    if preferred:
+        return preferred
+
     ports = list(list_ports.comports())
     def desc_hwid(port) -> str:
         return f"{(port.description or '')} {port.hwid}".lower()
@@ -57,11 +65,47 @@ def find_port(keywords: tuple[str, ...] = DOBOT_KEYWORDS) -> str | None:
         combined = desc_hwid(p)
         if any(kw.lower() in combined for kw in keywords):
             return p.device
-    # Fallback: prefer USB ports over ttyS* (ttyS often fails with I/O error)
-    usb_ports = [p for p in ports if "/ttyUSB" in p.device or "/ttyACM" in p.device]
-    if usb_ports:
-        return usb_ports[0].device
-    return ports[0].device if ports else None
+    fallback = _select_fallback_port(ports)
+    return fallback.device if fallback else None
+
+
+def _select_fallback_port(ports, platform_name: str | None = None):
+    """Return the best fallback serial port for the active platform."""
+    platform_name = platform_name or sys.platform
+    if not ports:
+        return None
+
+    def desc_hwid(port) -> str:
+        return f"{(port.description or '')} {port.hwid}".lower()
+
+    def score(port) -> tuple[int, str]:
+        device = (port.device or "")
+        device_l = device.lower()
+        combined = desc_hwid(port)
+        value = 0
+
+        if getattr(port, "vid", None) is not None or "usb vid:pid" in combined:
+            value += 20
+        if any(token in combined for token in ("usb", "uart", "serial", "cp210", "ch340", "silicon labs", "wch")):
+            value += 15
+        if "bluetooth" in combined or "virtual" in combined:
+            value -= 20
+
+        if platform_name == "win32":
+            if device.upper().startswith("COM"):
+                value += 25
+        elif platform_name == "darwin":
+            if "/dev/cu." in device_l or "/dev/tty.usb" in device_l:
+                value += 25
+        else:
+            if "/ttyusb" in device_l or "/ttyacm" in device_l:
+                value += 25
+            if "/ttys" in device_l:
+                value -= 20
+
+        return value, device
+
+    return max(ports, key=score)
 
 
 # ---------------------------------------------------------------------------

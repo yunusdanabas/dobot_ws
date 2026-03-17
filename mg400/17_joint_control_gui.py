@@ -48,7 +48,7 @@ from utils_mg400 import (  # noqa: E402
     check_errors,
     clamp,
     close_all,
-    connect,
+    connect_with_diagnostics,
     go_home,
     MG400_IP,
     parse_angles,
@@ -392,7 +392,7 @@ class ConnectWorker(QThread):
 
     def run(self) -> None:
         try:
-            dashboard, move_api, feed = connect(self.ip)
+            dashboard, move_api, feed = connect_with_diagnostics(self.ip)
             check_errors(dashboard)
             dashboard.EnableRobot()
             dashboard.SpeedFactor(self.speed)

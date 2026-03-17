@@ -110,9 +110,10 @@ advanced helper options and extra tooling.
 | Topic | Resource |
 |-------|---------|
 | Full 18-script lab walkthrough | `GUIDE.md` in the full course workspace |
-| Safe motion patterns | `docs/safe_move_patterns.md` in the full course workspace |
+| Repo documentation index | `docs/README.md` in the full course workspace |
 | Motion modes (MOVJ, MOVL, JUMP) | `docs/motion_modes.md` in the full course workspace |
-| Arc and circle math | `docs/circle_arc_math_reference.md` in the full course workspace |
-| pydobotplus API reference | `docs/pydobotplus_api_reference.md` in the full course workspace |
+| Arc and circle references | `docs/circle_drawing_index.md` in the full course workspace |
+| Magician hardware and kinematics | `magician/dobot_magician_info.md` and `magician/kinematics_guide.md` |
+| Magician vs MG400 overview | `docs/dobot_control_options_comparison.md` and `magician_vs_mg400.md` |
 | Denavit-Hartenberg parameters | [Wikipedia: Denavit–Hartenberg parameters](https://en.wikipedia.org/wiki/Denavit%E2%80%93Hartenberg_parameters) |
 | Robotics coordinate frames | Any introductory robotics textbook (e.g. Craig, *Introduction to Robotics*) |

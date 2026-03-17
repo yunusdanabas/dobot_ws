@@ -29,15 +29,14 @@ import csv
 import time
 
 from utils_mg400 import (
+    add_target_arguments,
     check_errors,
     clamp,
     close_all,
-    connect,
+    connect_from_args_or_exit,
     go_home,
-    MG400_IP,
     parse_angles,
     parse_pose,
-    ROBOT_IPS,
     SPEED_DEFAULT,
 )
 from viz_mg400 import RobotViz
@@ -102,14 +101,11 @@ def read_state(dashboard):
 
 def main():
     parser = argparse.ArgumentParser(description="MG400 interactive joint-angle REPL")
-    parser.add_argument("--ip", default=MG400_IP, help="MG400 IP address")
-    parser.add_argument("--robot", type=int, choices=[1, 2, 3, 4], metavar="N",
-                        help="Robot number 1-4 (overrides --ip)")
+    add_target_arguments(parser)
     parser.add_argument("--viz", action="store_true", help="Enable visualizer")
     args = parser.parse_args()
-    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
+    ip, dashboard, move_api, feed = connect_from_args_or_exit(args)
 
-    dashboard, move_api, feed = connect(ip)
     viz = RobotViz(enabled=args.viz)
 
     csv_fh     = None

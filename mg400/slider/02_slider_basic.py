@@ -22,15 +22,15 @@ import argparse
 import time
 
 from utils_slider import (
-    connect,
+    add_target_arguments,
     close_all,
     check_errors,
+    connect_from_args_or_exit,
     go_home,
     go_home_slider,
     safe_move_ext,
     print_slider_status,
     SLIDER_IP,
-    ROBOT_IPS,
     SPEED_DEFAULT,
 )
 
@@ -40,14 +40,11 @@ WAYPOINTS = [0.0, 200.0, 400.0, 600.0, 800.0]
 
 def main():
     parser = argparse.ArgumentParser(description="MG400 slider basic traverse")
-    parser.add_argument("--ip", default=SLIDER_IP, help="MG400 IP address")
-    parser.add_argument("--robot", type=int, default=2, choices=[1, 2, 3, 4],
-                        metavar="N", help="Robot number 1-4 (overrides --ip)")
+    add_target_arguments(parser, default_ip=SLIDER_IP)
     args = parser.parse_args()
-    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
+    ip, dashboard, move_api, feed = connect_from_args_or_exit(args)
 
     print(f"Connecting to MG400 (slider) at {ip} ...")
-    dashboard, move_api, feed = connect(ip)
     print("  Connected.")
 
     try:

@@ -38,6 +38,7 @@ def main():
         print("[!] No Dobot device found (CP210x/Silicon Labs or CH340/USB2.0-Serial).")
         print("    Check USB cable, power adapter, and driver installation.")
         print("    On Linux: sudo usermod -a -G dialout $USER  (then re-login)")
+        print("    On Windows: check Device Manager for a Silicon Labs / USB Serial COM port.")
 
 
 if __name__ == "__main__":

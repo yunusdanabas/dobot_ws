@@ -16,11 +16,13 @@ Manual pose push (e.g. in feedback loops):
     viz.send(x, y, z, r)
 
 Disable via environment or CLI:
-    DOBOT_VIZ=0 python 07_keyboard_teleop.py
+    DOBOT_VIZ=0 python 07_keyboard_teleop.py               # Linux/macOS
+    $env:DOBOT_VIZ='0'; python 07_keyboard_teleop.py       # Windows PowerShell
     python 07_keyboard_teleop.py --no-viz
 
 Trail length (default 500):
-    DOBOT_TRAIL=1000 python 09_arc_motion.py
+    DOBOT_TRAIL=1000 python 09_arc_motion.py               # Linux/macOS
+    $env:DOBOT_TRAIL='1000'; python 09_arc_motion.py       # Windows PowerShell
 
 Architecture: identical to scripts/viz.py — the motion script owns all TCP
 sockets; this module spawns a separate subprocess (spawn context) that owns

@@ -5,8 +5,11 @@ Part 1 walks students through each script step by step.
 Part 2 covers implementation details for TAs and anyone extending the code.
 
 This guide covers the full-featured root tracks in [`magician/`](./magician/) and
-[`mg400/`](./mg400/). The simplified intro-week copies live in
-[`Students/00_IntroductionWeek/README.md`](./Students/00_IntroductionWeek/README.md).
+[`mg400/`](./mg400/). Simplified student copies live in
+[`Students/00_IntroductionWeek/`](./Students/00_IntroductionWeek/README.md) (Week 0 — Magician) and
+[`Students/01_SecondWeek/`](./Students/01_SecondWeek/README.md) (Week 1 — MG400).
+For the native Windows workspace setup and MG400 adapter configuration, use
+[`windows/README.md`](./windows/README.md).
 
 > **Prerequisites** — Python 3.10+, a USB cable, and the Dobot's wall-power adapter.
 
@@ -68,8 +71,10 @@ pip install -r requirements.txt
 **Option B — venv:**
 ```bash
 cd dobot_ws
-python3 -m venv .venv
+python3 -m venv .venv              # Linux / macOS
+python -m venv .venv               # Windows PowerShell
 source .venv/bin/activate          # Linux / macOS
+.venv\Scripts\Activate.ps1         # Windows PowerShell
 pip install -U pip
 pip install -r requirements.txt
 ```
@@ -81,7 +86,11 @@ Clone into `vendor/` for automatic discovery:
 cd dobot_ws
 git clone https://github.com/AlexGustafsson/dobot-python.git vendor/dobot-python
 ```
-Or clone elsewhere and set `export DOBOT_PYTHON_PATH=/path/to/dobot-python`.
+Or clone elsewhere and set:
+```bash
+export DOBOT_PYTHON_PATH=/path/to/dobot-python        # Linux / macOS
+$env:DOBOT_PYTHON_PATH='C:\path\to\dobot-python'      # Windows PowerShell
+```
 
 **Linux only** — grant serial port access (then log out and back in):
 
@@ -101,7 +110,8 @@ before running them.
 
 ```bash
 mamba activate dobot
-# or: source .venv/bin/activate
+# or: source .venv/bin/activate      # Linux / macOS
+# or: .venv\Scripts\Activate.ps1     # Windows PowerShell
 cd magician
 ```
 
@@ -119,7 +129,7 @@ The Dobot's CP210x USB chip is marked with `<-- DOBOT`.
 ```
 Device               Description                              HWID
 ------------------------------------------------------------------------------------------
-/dev/ttyUSB0         Silicon Labs CP210x                      USB VID:PID=...  <-- DOBOT
+COM3                 Silicon Labs CP210x                      USB VID:PID=...  <-- DOBOT
 ```
 
 **What you learn:** How to identify hardware on the USB bus. The port name
@@ -143,7 +153,7 @@ and joint angles, then disconnects.
 **What to expect:**
 
 ```
-Connecting on /dev/ttyUSB0 ...
+Connecting on COM3 ...
 
 === Current Pose (pydobotplus) ===
   Cartesian : X=200.0  Y=0.0  Z=100.0  R=0.0  mm/deg
@@ -365,7 +375,8 @@ queues many small linear moves and monitors execution with
 
 **Prerequisites:** Requires the `dobot-python` source checkout. If cloned to
 `vendor/dobot-python` (see Environment Setup), the script finds it automatically.
-Otherwise set `export DOBOT_PYTHON_PATH=/path/to/dobot-python`.
+Otherwise set `DOBOT_PYTHON_PATH` (`export ...` on Linux/macOS or
+`$env:DOBOT_PYTHON_PATH='C:\path\to\dobot-python'` in Windows PowerShell).
 
 **What to expect:** Three circles at different resolutions (36, 72, 24
 points). The script prints queue progress while the robot draws.
@@ -530,7 +541,8 @@ the `RobotViz` API: `RobotViz()` → `send()` → `close()`. Motion scripts add
 the visualizer suppressed without code changes:
 
 ```bash
-DOBOT_VIZ=0 python 07_keyboard_teleop.py
+DOBOT_VIZ=0 python 07_keyboard_teleop.py               # Linux / macOS
+$env:DOBOT_VIZ='0'; python 07_keyboard_teleop.py       # Windows PowerShell
 python 07_keyboard_teleop.py --no-viz
 ```
 
@@ -660,7 +672,8 @@ require `pyqtgraph` and `PyQt5` from `requirements.txt`.
 
 To **disable** without changing the script:
 ```bash
-DOBOT_VIZ=0 python 08_pick_and_place.py
+DOBOT_VIZ=0 python 08_pick_and_place.py               # Linux / macOS
+$env:DOBOT_VIZ='0'; python 08_pick_and_place.py       # Windows PowerShell
 python 08_pick_and_place.py --no-viz
 ```
 
@@ -727,9 +740,9 @@ See `docs/motion_modes.md` for the full 10-mode table and configuration details.
 | `LIMIT_AXIS*` alarms, position ~(19,0,-10) | Robot not homed after power-on | Run `do_homing(bot)` before any motion. See "Homing after power-on" below. |
 | Suction not gripping | Vacuum leak or wrong end-effector | Check the suction cup seal. Ensure `EFFECTOR = "suction"` in the script. |
 | Script hangs after `move_to` | Missing `wait=True` or robot is stuck | All scripts use `wait=True` by default. If stuck, power-cycle the robot. |
-| `ModuleNotFoundError: pydobotplus` | Virtual environment not activated | Run `mamba activate dobot` or `source .venv/bin/activate` before running scripts. |
+| `ModuleNotFoundError: pydobotplus` | Virtual environment not activated | Run `mamba activate dobot`, `source .venv/bin/activate` (Linux/macOS), or `.venv\Scripts\Activate.ps1` (Windows PowerShell) before running scripts. |
 | `ModuleNotFoundError: PyQt5` or `pyqtgraph` | Packages not installed | Run `pip install pyqtgraph PyQt5` inside your active environment, or use `pip install -r requirements.txt`. |
-| Visualizer window doesn't open | Viz disabled or Qt import failed | Ensure you did not pass `--no-viz` or set `DOBOT_VIZ=0`. Run `python -c "import pyqtgraph, PyQt5"` to verify Qt. |
+| Visualizer window doesn't open | Viz disabled or Qt import failed | Ensure you did not pass `--no-viz` or set `DOBOT_VIZ=0` / `$env:DOBOT_VIZ='0'`. Run `python -c "import pyqtgraph, PyQt5"` to verify Qt. |
 | Keyboard teleop keys don't work | Terminal not focused | Click the terminal window so it has focus. The script reads keys directly from the terminal (works on Wayland and X11). |
 | `Position(x=..., y=..., z=..., r=...)` printed on every move | pydobotplus upstream debug print | Fixed automatically: importing `utils` patches `Dobot.move_to` to suppress the print and the unnecessary `get_pose()` call it contained. No action needed. |
 | Keyboard teleop overshoots after releasing a key | Queued commands still executing | Fixed: releasing a key now flushes the robot command queue (`stop_exec → clear → start_exec`). If you still see it, check RELEASE_THRESHOLD in the script. |
@@ -809,19 +822,12 @@ magician/
 ├── 17_visualizer.py      ← Live pose monitor + RobotViz standalone demo
 ├── 18_joint_control.py   ← Interactive J1–J4 REPL: FK preview, MOVJ_ANGLE, CSV log
 ├── 19_relative_joint_control.py ← Body-frame relative angle REPL: conversion chain, FK, viz
-├── pyqtgraph_helpers.py  ← Shared QThread polling helper for standalone viz examples
 └── viz.py                ← RobotViz utility: dual-view 2D visualizer (spawn subprocess, PyQt5)
 
-docs/                     ← API reference and circle math guides
+docs/                     ← Topic indexes and reference shortcuts
 ├── README.md             ← Canonical docs index
-├── pydobotplus_api_reference.md
-├── pydobotplus_api_detailed.md
-├── safe_move_patterns.md
-├── arc_and_circles.md
 ├── circle_drawing_index.md
-├── circle_drawing_math.md
-├── circle_arc_math_reference.md
-└── motion_modes.md       ← MODE_PTP complete reference
+└── motion_modes.md       ← Motion mode map across Magician and MG400
 
 mg400/                    ← MG400 parallel workspace (TCP/IP, 440 mm reach)
 ├── utils_mg400.py        ← Shared helpers: connect(), safe_move(), parse_pose(), check_errors()
@@ -837,7 +843,13 @@ mg400/                    ← MG400 parallel workspace (TCP/IP, 440 mm reach)
 ├── 09_arc_motion.py      ← Arc(), Circle(), sampled circle
 ├── 10_relative_moves.py  ← RelMovJ, RelMovL, relative pick-and-place
 ├── 11_motion_modes.py    ← MovJ vs MovL vs Arc comparison
-└── 12_feedback_monitor.py ← Live pose from port 30004 + viz
+├── 12_feedback_monitor.py ← Live pose from port 30004 + viz
+├── 13_multi_robot_demo.py ← Parallel multi-robot motion demo
+├── 14_joint_control.py   ← Interactive J1–J4 REPL with FK preview
+├── 15_multi_joint_control.py ← Broadcast joint commands to multiple robots
+├── 16_relative_joint_control.py ← Relative-angle REPL with conversion chain
+├── 17_joint_control_gui.py ← PyQt5 GUI for absolute/relative/cartesian control
+└── slider/               ← MG400 sliding rail scripts and helpers
 
 vendor/
 ├── dobot-python/         ← Track B SDK (Magician, for magician/10_circle_queue.py)
@@ -967,7 +979,9 @@ if __name__ == "__main__":
     main()
 ```
 
-Disable the visualizer during development with `DOBOT_VIZ=0 python NN_description.py` or `python NN_description.py --no-viz`.
+Disable the visualizer during development with `DOBOT_VIZ=0 python NN_description.py`
+(Linux/macOS), `$env:DOBOT_VIZ='0'; python NN_description.py` (Windows PowerShell),
+or `python NN_description.py --no-viz`.
 
 ### Built-in extension points
 
@@ -996,12 +1010,13 @@ Disable the visualizer during development with `DOBOT_VIZ=0 python NN_descriptio
 - Keep the `EFFECTOR`, `PICK_X/Y/Z`, `STEP` etc. as constants at the top of
   the file so students can edit them without reading the whole script
 - Add `RobotViz` to any motion script with the 3-line pattern (`from viz import RobotViz` / `viz = RobotViz(); viz.attach(bot)` / `viz.close()` in finally before `bot.close()`)
-- Students can suppress the visualizer with `DOBOT_VIZ=0` or `--no-viz` — no code change required
+- Students can suppress the visualizer with `DOBOT_VIZ=0` (Linux/macOS),
+  `$env:DOBOT_VIZ='0'` (Windows PowerShell), or `--no-viz` — no code change required
 
 ---
 
-*For detailed API reference, hardware specs, and advanced queue patterns, see
-[dobot_control_options_comparison.md](./dobot_control_options_comparison.md).*
+*For the compact control-stack map and reference index, see
+[`docs/control_map.md`](./docs/control_map.md).*
 
 ---
 
@@ -1010,15 +1025,16 @@ Disable the visualizer during development with `DOBOT_VIZ=0 python NN_descriptio
 ### Dobot Magician (USB-serial)
 
 - [`README.md`](./README.md) — workspace landing page and quick navigation
-- [`Students/00_IntroductionWeek/README.md`](./Students/00_IntroductionWeek/README.md) — simplified intro-week index for the student copies
+- [`Students/00_IntroductionWeek/README.md`](./Students/00_IntroductionWeek/README.md) — Week 0 student index (Magician)
+- [`Students/01_SecondWeek/README.md`](./Students/01_SecondWeek/README.md) — Week 1 student index (MG400)
 - [`requirements.txt`](./requirements.txt) — pip dependencies (pydobotplus, pydobot, pyserial, pyqtgraph, PyQt5, numpy)
-- [`dobot_control_options_comparison.md`](./dobot_control_options_comparison.md) — hardware specs, library syntax, safety, motion modes
+- [`docs/control_map.md`](./docs/control_map.md) — hardware specs, library syntax, safety, motion modes
 - [`magician/README.md`](./magician/README.md) — numbered script sequence and support-file grouping
 - [`docs/`](./docs/) — canonical docs for the full root tracks; the intro-week copies intentionally expose a smaller helper/API surface
 - [`docs/README.md`](./docs/README.md) — canonical docs index
 - [`docs/motion_modes.md`](./docs/motion_modes.md) — Complete MODE_PTP table, MOVJ/MOVL/JUMP decision guide, JUMP configuration, alarm codes
 - [`docs/circle_drawing_index.md`](./docs/circle_drawing_index.md) — Start here for circle drawing: links to math guides, scripts, and worked examples
-- [`magician/viz.py`](./magician/viz.py) — `RobotViz` class: real-time dual-view 2D visualizer (disable with `DOBOT_VIZ=0` or `--no-viz`)
+- [`magician/viz.py`](./magician/viz.py) — `RobotViz` class: real-time dual-view 2D visualizer (disable with `DOBOT_VIZ=0`, `$env:DOBOT_VIZ='0'`, or `--no-viz`)
 - [`magician/17_visualizer.py`](./magician/17_visualizer.py) — standalone pose monitor; demonstrates `RobotViz` without motion
 - [`magician/18_joint_control.py`](./magician/18_joint_control.py) — interactive joint-angle REPL with FK display, clamping, and CSV logging
 - [`magician/19_relative_joint_control.py`](./magician/19_relative_joint_control.py) — body-frame relative angle REPL: prints conversion chain (Relative/Absolute/Firmware) + FK prediction
@@ -1029,4 +1045,6 @@ Disable the visualizer during development with `DOBOT_VIZ=0 python NN_descriptio
 - [`mg400/utils_mg400.py`](./mg400/utils_mg400.py) — MG400 equivalents of `utils.py`: `connect()`, `safe_move()`, `parse_pose()`, `check_errors()`, constants
 - [`mg400/viz_mg400.py`](./mg400/viz_mg400.py) — `RobotViz` adapted for MG400 workspace bounds; same 3-line integration pattern
 - [`vendor/TCP-IP-4Axis-Python/`](./vendor/TCP-IP-4Axis-Python/) — Dobot official MG400 SDK (`dobot_api.py`, `MyType` numpy dtype for port 30004)
-- `CLAUDE.md §MG400` / `GEMINI.md §MG400` — full API reference, network setup, coordinate bounds, and script table (01–12)
+- [`mg400/MG400_info.md`](./mg400/MG400_info.md) — MG400 network setup, script index, and sliding rail notes
+- [`windows/README.md`](./windows/README.md) — Windows adapter setup, PowerShell commands, and troubleshooting
+- [`docs/magician_vs_mg400.md`](./docs/magician_vs_mg400.md) — code-level comparison between the Magician and MG400 tracks

@@ -24,48 +24,33 @@ Usage:
 """
 
 import argparse
-import sys
 
 from utils_slider import (
-    connect,
+    add_target_arguments,
     close_all,
+    connect_from_args_or_exit,
     parse_pose,
     parse_robot_mode,
+    query_dashboard_version,
     get_slider_pos,
     SLIDER_IP,
-    ROBOT_IPS,
     ROBOT_MODE,
 )
 
 
 def main():
     parser = argparse.ArgumentParser(description="MG400 slider connectivity test")
-    parser.add_argument("--ip", default=SLIDER_IP, help="MG400 IP address")
-    parser.add_argument("--robot", type=int, default=2, choices=[1, 2, 3, 4],
-                        metavar="N", help="Robot number 1-4 (overrides --ip)")
+    add_target_arguments(parser, default_ip=SLIDER_IP)
     args = parser.parse_args()
-    ip = ROBOT_IPS[args.robot] if args.robot else args.ip
+    ip, dashboard, move_api, feed = connect_from_args_or_exit(args)
 
     print(f"Connecting to MG400 (slider) at {ip} ...")
-    try:
-        dashboard, move_api, feed = connect(ip)
-    except ConnectionRefusedError:
-        sys.exit(
-            "[Error] Connection refused. Check:\n"
-            "  1. MG400 is powered and Ethernet cable connected\n"
-            "  2. PC Ethernet static IP = 192.168.2.100 / 255.255.255.0\n"
-            f"  3. ping {ip} succeeds\n"
-            "  4. DobotStudio Pro has External Axis configured (Linear, mm)"
-        )
-    except OSError as exc:
-        sys.exit(f"[Error] Cannot connect: {exc}")
-
     print("  TCP sockets open: dashboard(29999), move(30003), feed(30004)")
 
     try:
         # --- Firmware version ---
         try:
-            ver = dashboard.GetVersion()
+            ver = query_dashboard_version(dashboard)
             print(f"  Firmware version : {ver.strip()}")
         except Exception as exc:
             print(f"  Firmware version : (unavailable — {exc})")

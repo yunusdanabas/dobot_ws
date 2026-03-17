@@ -172,7 +172,11 @@ def _build_check_detail(robot_id: int, ip: str, label: str,
         for c in conns:
             lines.append(f"      {c}")
     else:
-        lines.append("  No lingering connections from this PC.")
+        note = p1.get("local_connections_note")
+        if note:
+            lines.append(f"  {note}")
+        else:
+            lines.append("  No lingering connections from this PC.")
 
     lines.append("")
     lines.append("[Phase 2] Application")
