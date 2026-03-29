@@ -10,11 +10,11 @@ Enter *relative* (body-frame) joint angles to move the robot:
 
 The script converts your input through the full FK chain:
   j3_abs = j2_rel + j3_rel          (elbow angle from horizontal)
-  j4_abs = j3_abs + j4_rel          (wrist angle from horizontal)
+  j4_abs = j4_rel                   (wrist yaw only; end-effector stays parallel to floor)
 
 MG400 firmware expects fully absolute angles, so:
   j3_fw = j3_abs = j2_rel + j3_rel
-  j4_fw = j4_abs = j2_rel + j3_rel + j4_rel
+  j4_fw = j4_rel                    (wrist yaw only)
 
 Commands:
   j1 j2 j3 j4   enter relative joint angles (degrees, space-separated)
@@ -54,7 +54,7 @@ JOINT_BOUNDS = {
     "j1": (-160.0, 160.0),   # ±160° per hardware guide
     "j2": ( -25.0,  85.0),   # -25° ~ +85° per hardware guide
     "j3": ( -25.0, 105.0),   # j3_fw = j3_abs = j2_rel + j3_rel; -25° ~ +105° per hardware guide
-    "j4": (-180.0, 180.0),   # j4_fw = j4_abs = j2_rel + j3_rel + j4_rel; ±180° per hardware guide
+    "j4": (-180.0, 180.0),   # j4_fw = j4_rel (wrist yaw only); ±180° per hardware guide
 }
 
 
@@ -67,7 +67,7 @@ def rel_to_abs_mg400(j1_r, j2_r, j3_r, j4_r):
 
     Body-frame chain:
       j3_abs = j2_rel + j3_rel      (accumulated elbow angle from horizontal)
-      j4_abs = j3_abs + j4_rel      (accumulated wrist angle from horizontal)
+      j4_abs = j4_rel               (wrist yaw only; end-effector stays parallel to floor)
 
     MG400 firmware expects fully absolute angles, so fw_tuple == abs_tuple.
 
@@ -76,17 +76,15 @@ def rel_to_abs_mg400(j1_r, j2_r, j3_r, j4_r):
       abs_tuple = (j1_abs, j2_abs, j3_abs, j4_abs)  — same, for display
     """
     j3_abs = j2_r + j3_r
-    j4_abs = j3_abs + j4_r
-    fw_tuple  = (j1_r, j2_r, j3_abs, j4_abs)
-    abs_tuple = (j1_r, j2_r, j3_abs, j4_abs)
+    fw_tuple  = (j1_r, j2_r, j3_abs, j4_r)
+    abs_tuple = (j1_r, j2_r, j3_abs, j4_r)
     return fw_tuple, abs_tuple
 
 
 def fw_to_rel_mg400(j1_fw, j2_fw, j3_fw, j4_fw):
     """Convert firmware (absolute) angles back to body-frame relative angles."""
     j3_rel = j3_fw - j2_fw
-    j4_rel = j4_fw - j3_fw
-    return j1_fw, j2_fw, j3_rel, j4_rel
+    return j1_fw, j2_fw, j3_rel, j4_fw
 
 
 # ---------------------------------------------------------------------------

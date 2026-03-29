@@ -11,7 +11,7 @@
 
 **PC static IP**: `192.168.2.100`, netmask `255.255.255.0`
 
-Verify connectivity: `ping 192.168.2.7`
+Verify connectivity: `ping <assigned-robot-ip>` (example: `ping 192.168.2.7`)
 
 The MG400 script entrypoints are the same on Ubuntu and native Windows. For the
 native Windows setup, direct-Ethernet steps, and PowerShell commands, use
@@ -67,56 +67,6 @@ separate Windows teleop script is required.
 - `00_connectivity_check.py` prints a detailed per-robot network and dashboard report
 - `00_connectivity_gui.py` provides the same checks in a GUI for lab troubleshooting
 - `00_raw_dashboard_probe.py` is the low-level raw socket probe for vendor-response debugging
-
-## Sliding Rail — Robot 2 (DT-AC-HDSR-001)
-
-Robot 2 (IP `192.168.2.10`) has a **DOBOT MG400 Sliding Rail Kit** attached.
-Hardware specs: 800 mm travel, ±0.05 mm repeat accuracy, 800 mm/s max speed.
-Full hardware spec: see `dobot_slider_info.md` (repo root).
-
-### One-time DobotStudio Pro Setup (required before any slider script)
-
-1. Open DobotStudio Pro → **Configure** → **External Axis**
-2. Set **Type** to **Linear** and **Unit** to **mm**
-3. Enable the external axis and click **Save**
-4. Reboot the robot controller
-5. Verify: `ping 192.168.2.10` and run `slider/01_slider_connect_test.py`
-
-### Slider Scripts (`mg400/slider/01–04`)
-
-| Script | Description |
-|--------|-------------|
-| `slider/01_slider_connect_test.py` | TCP test; no enable, no motion; shows position = UNKNOWN |
-| `slider/02_slider_basic.py` | Home arm + slider, traverse [0,200,400,600,800] mm |
-| `slider/03_slider_arm_demo.py` | Coordinated arm + rail via `SyncAll()` (5 waypoints) |
-| `slider/04_slider_teleop.py` | Hybrid keyboard teleop: `MoveJog` (arm) + incremental `MovJExt` (slider) |
-
-All slider scripts default to `--robot 2`. Pass `--robot N` or `--ip <addr>` to override.
-`slider/04_slider_teleop.py` uses the same keybindings on Ubuntu and Windows.
-
-### Key Slider API
-
-```python
-from mg400.slider.utils_slider import (
-    go_home_slider,    # MovJExt(0) + Sync() — establishes position reference
-    safe_move_ext,     # clamp + MovJExt; optional sync=True
-    jog_slider,        # relative step from current position
-    get_slider_pos,    # returns last commanded mm, or None if not homed
-    print_slider_status,
-)
-
-# Pattern: home → move → SyncAll for coordinated arm+rail
-go_home_slider(move_api)                       # reference at 0 mm
-safe_move_ext(move_api, 400.0)                 # queue slider (no Sync yet)
-safe_move(move_api, 300, 0, 50, 0)             # queue arm   (no Sync yet)
-move_api.SyncAll()                             # wait for BOTH queues
-```
-
-**Notes:**
-- `move_api.SyncAll()` waits for the arm queue **and** the slider queue.
-- `move_api.Sync()` waits for the arm queue only.
-- There is **no** `GetPoseExt` — slider position is tracked in software.
-- `MovJExt` is in `vendor/TCP-IP-4Axis-Python/dobot_api.py` (line 770).
 
 ## Joint Ranges (per DT-MG400-4R075-01 hardware guide V1.1, Table 2.1)
 

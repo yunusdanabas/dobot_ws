@@ -53,10 +53,10 @@ _spec.loader.exec_module(_cc)
 # After _cc is loaded, utils_mg400 + dobot_api are already on sys.path.
 from utils_mg400 import READY_POSE, DASHBOARD_PORT, MOVE_PORT, ROBOT_IPS  # noqa: E402
 
-# Human-readable labels for each robot (Robot 2 has the sliding rail)
+# Human-readable labels for each robot
 ROBOT_LABELS = {
     1: "Robot 1",
-    2: "Robot 2+rail",
+    2: "Robot 2",
     3: "Robot 3",
     4: "Robot 4",
 }

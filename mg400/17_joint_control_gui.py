@@ -118,18 +118,16 @@ def rel_to_abs_mg400(j1_r: float, j2_r: float, j3_r: float, j4_r: float):
     j1_fw = j1_rel
     j2_fw = j2_rel
     j3_fw = j2_rel + j3_rel   (elbow accumulated from shoulder)
-    j4_fw = j3_fw  + j4_rel   (wrist accumulated from elbow)
+    j4_fw = j4_rel             (wrist yaw only; end-effector stays parallel to floor)
     """
     j3_abs = j2_r + j3_r
-    j4_abs = j3_abs + j4_r
-    return j1_r, j2_r, j3_abs, j4_abs
+    return j1_r, j2_r, j3_abs, j4_r
 
 
 def fw_to_rel_mg400(j1_fw: float, j2_fw: float, j3_fw: float, j4_fw: float):
     """Convert firmware (absolute) angles → body-frame relative."""
     j3_rel = j3_fw - j2_fw
-    j4_rel = j4_fw - j3_fw
-    return j1_fw, j2_fw, j3_rel, j4_rel
+    return j1_fw, j2_fw, j3_rel, j4_fw
 
 
 # ---------------------------------------------------------------------------

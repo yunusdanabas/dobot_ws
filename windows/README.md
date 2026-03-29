@@ -131,49 +131,31 @@ python mg400\17_joint_control_gui.py
 python mg400\00_connectivity_check.py
 ```
 
-## 4. Sliding Rail
-
-Robot 2 is the default slider robot.
-
-One-time DobotStudio Pro setup:
-1. Open `Configure`.
-2. Open `External Axis`.
-3. Set type to `Linear`.
-4. Set unit to `mm`.
-5. Enable the external axis.
-6. Save and reboot the controller.
-
-Run:
-
-```powershell
-python mg400\slider\01_slider_connect_test.py
-python mg400\slider\02_slider_basic.py
-python mg400\slider\03_slider_arm_demo.py --viz
-python mg400\slider\04_slider_teleop.py
-```
-
-## 5. Student Intro Scripts
+## 4. Student Intro Scripts
 
 Run from the script directory:
 
 ```powershell
-# Week 0 — Magician
+# Week 0 — Magician GUI
 Push-Location Students\00_IntroductionWeek\magician
-python 01_init_check.py
-python 02_joint_control.py
-python 03_relative_joint_control.py
+python 00_magician_gui.py
 Pop-Location
 
-# Week 1 — MG400
+# Week 0 — MG400 GUI (Ethernet required; set static IP 192.168.2.100/24 first)
+Push-Location Students\00_IntroductionWeek\mg400
+python 00_mg400_gui.py          # default: Robot 1
+python 00_mg400_gui.py --robot 2
+Pop-Location
+
+# Week 1 — MG400 (command-line scripts, advanced)
 Push-Location Students\01_SecondWeek\mg400
 python 01_init_check.py
 python 02_joint_control.py
 python 03_relative_joint_control.py
-python 04_slider_intro.py
 Pop-Location
 ```
 
-## 6. Common Fixes
+## 5. Common Fixes
 
 - `Activate.ps1` blocked: run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
 - `dobot_api.py not found`: clone `vendor\TCP-IP-4Axis-Python`

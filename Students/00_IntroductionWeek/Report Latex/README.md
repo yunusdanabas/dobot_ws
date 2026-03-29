@@ -1,23 +1,17 @@
 # Lab 00 Report Template
 
-LaTeX handout for Week 0 — Dobot Magician introduction.
+LaTeX handout for Week 0 — Dobot Magician and DOBOT MG400 introduction.
 
-This handout covers the Magician-only scripts in `Students/00_IntroductionWeek/magician/`.
-MG400 exercises are in the Week 1 handout (`lab01`), see `Students/01_SecondWeek/`.
-
-## Quick Start
-
-```bash
-# Activate your environment first, then run:
-cd Students/00_IntroductionWeek/magician
-python 01_init_check.py
-```
+This handout covers both robots:
+- Magician scripts in `Students/00_IntroductionWeek/magician/`
+- MG400 scripts in `Students/00_IntroductionWeek/mg400/`
 
 ## Build the PDF
 
 ```bash
 cd "Students/00_IntroductionWeek/Report Latex"
 pdflatex lab00_handout.tex
+pdflatex lab00_handout.tex   # second pass for cross-references
 ```
 
 ## Contents

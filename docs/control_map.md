@@ -23,7 +23,6 @@ This page is a compact map of the control surfaces available in this workspace.
 |---|---|---|
 | `vendor/TCP-IP-4Axis-Python/dobot_api.py` | official SDK transport layer | [`mg400/utils_mg400.py`](./mg400/utils_mg400.py) |
 | `mg400/utils_mg400.py` | shared safety, parsing, connection helpers | [`mg400/utils_mg400.py`](./mg400/utils_mg400.py) |
-| `mg400/slider/utils_slider.py` | slider-specific wrapper layer | [`mg400/slider/utils_slider.py`](./mg400/slider/utils_slider.py) |
 
 ## Use These Docs
 

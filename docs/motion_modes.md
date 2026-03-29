@@ -45,4 +45,3 @@ Use these scripts as the practical motion-mode references for lab work:
 
 - Magician: [`../magician/08_pick_and_place.py`](../magician/08_pick_and_place.py)
 - MG400: [`../mg400/08_pick_and_place.py`](../mg400/08_pick_and_place.py)
-- MG400 slider: [`../mg400/slider/03_slider_arm_demo.py`](../mg400/slider/03_slider_arm_demo.py)

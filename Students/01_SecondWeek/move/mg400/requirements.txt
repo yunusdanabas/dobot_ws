@@ -1,0 +1,3 @@
+numpy
+# dobot_api.py comes from the SDK (git clone, not pip):
+#   git clone https://github.com/Dobot-Arm/TCP-IP-4Axis-Python.git vendor/TCP-IP-4Axis-Python

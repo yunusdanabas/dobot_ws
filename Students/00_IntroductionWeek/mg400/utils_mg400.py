@@ -12,8 +12,8 @@ Import in any script:
     )
 
 SDK auto-discovery: finds dobot_api.py from either:
-  1. Students/01_SecondWeek/mg400/dobot_api.py  (user-placed copy)
-  2. vendor/TCP-IP-4Axis-Python/dobot_api.py    (SDK git clone at dobot_ws root)
+  1. Students/00_IntroductionWeek/mg400/dobot_api.py  (user-placed copy)
+  2. vendor/TCP-IP-4Axis-Python/dobot_api.py          (SDK git clone at dobot_ws root)
 
 One-time SDK setup:
     cd dobot_ws
@@ -50,7 +50,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 _HERE          = Path(__file__).parent
-# standalone share: vendor/ sits next to mg400/ inside 01_SecondWeek/
+# standalone share: vendor/ sits next to mg400/ (standalone fallback)
 _VENDOR_LOCAL  = _HERE.parent / "vendor" / "TCP-IP-4Axis-Python"
 # full repo: vendor/ sits at dobot_ws root
 _VENDOR_REPO   = _HERE.parent.parent.parent / "vendor" / "TCP-IP-4Axis-Python"
@@ -67,7 +67,7 @@ def _find_dobot_api() -> str:
     raise ImportError(
         "dobot_api.py not found.\n"
         "Clone the official SDK next to this folder:\n"
-        "  cd 01_SecondWeek\n"
+        "  cd dobot_ws\n"
         "  git clone https://github.com/Dobot-Arm/TCP-IP-4Axis-Python.git "
         "vendor/TCP-IP-4Axis-Python\n"
         "Or place dobot_api.py directly in mg400/."
@@ -379,236 +379,3 @@ def check_errors(dashboard) -> None:
         raise
     except Exception as exc:
         print(f"[check_errors] Could not read errors: {exc}")
-
-
-# ============================================================================
-# Lab 01 helpers — FK lab (lab01_fk.py style calculation scripts)
-# ============================================================================
-#
-# These functions extend utils_mg400 for the Week 2 lab.  They do NOT change
-# any of the functions above (backward-compatible).
-#
-# Student API:
-#   dashboard, move_api = setup(robot=1)
-#   moveMG400(move_api, q)              — body-frame [q1,q2,q3,q4]
-#   get_joints(dashboard)               — returns body-frame (q1,q2,q3,q4)
-#   get_pose(dashboard)                 — returns (x,y,z,r)
-#   move_and_get_feedback(move_api, dashboard, q) — move + return actual pose
-#   teardown(dashboard, move_api)       — go home, disable, close
-#
-# Body-frame → firmware conversion (MG400 fully-absolute):
-#   J3_firmware = q2 + q3   (accumulated; no Magician quirk)
-#   J4_firmware = q2 + q3 + q4
-# ============================================================================
-
-import time as _time
-
-# FK constants (Week 2 lab)
-L1     = 175.0   # mm — upper arm (J2 shoulder pivot to elbow)
-L2     = 175.0   # mm — forearm (elbow to end-effector)
-Z_base = 116.0   # mm — J2 shoulder height above mounting surface
-                 # Verify at lab start: move arm to J2=0 (horizontal), read get_pose()[2]
-
-# Firmware joint bounds for body-frame moves
-JOINT_BOUNDS_FW = {
-    "j1": (-160.0, 160.0),
-    "j2": ( -25.0,  85.0),
-    "j3": ( -25.0, 105.0),   # firmware J3 = q2 + q3 (absolute elbow)
-    "j4": (-180.0, 180.0),   # firmware J4 = q4 (wrist yaw only; end-effector stays parallel to floor)
-}
-
-
-def _rel_to_fw_mg400(q: list) -> tuple[float, float, float, float]:
-    """Convert body-frame [q1,q2,q3,q4] to MG400 firmware (j1,j2,j3,j4).
-
-    MG400 firmware expects:
-      j1_fw = q1
-      j2_fw = q2
-      j3_fw = q2 + q3   (accumulated elbow angle from horizontal)
-      j4_fw = q4         (wrist yaw only; end-effector stays parallel to floor)
-    """
-    j3_fw = q[1] + q[2]
-    return float(q[0]), float(q[1]), float(j3_fw), float(q[3])
-
-
-def _fw_to_rel_mg400(j1: float, j2: float, j3: float, j4: float) -> tuple:
-    """Convert MG400 firmware angles to body-frame.
-
-    Inverse of _rel_to_fw_mg400:
-      q1 = j1
-      q2 = j2
-      q3 = j3 - j2   (elbow relative to upper arm)
-      q4 = j4         (wrist yaw; end-effector stays parallel to floor)
-    """
-    q3 = j3 - j2
-    return j1, j2, q3, j4
-
-
-def _clamp_fw_mg400(j1: float, j2: float, j3: float, j4: float) -> tuple:
-    """Clamp MG400 firmware angles to JOINT_BOUNDS_FW. Warn if any value changed."""
-    def clamp(v, lo, hi):
-        return max(lo, min(hi, v))
-
-    cj1 = clamp(j1, *JOINT_BOUNDS_FW["j1"])
-    cj2 = clamp(j2, *JOINT_BOUNDS_FW["j2"])
-    cj3 = clamp(j3, *JOINT_BOUNDS_FW["j3"])
-    cj4 = clamp(j4, *JOINT_BOUNDS_FW["j4"])
-    if (cj1, cj2, cj3, cj4) != (j1, j2, j3, j4):
-        print(f"  [moveMG400] Clamped firmware:  "
-              f"({j1:.1f},{j2:.1f},{j3:.1f},{j4:.1f}) "
-              f"→ ({cj1:.1f},{cj2:.1f},{cj3:.1f},{cj4:.1f})")
-    return cj1, cj2, cj3, cj4
-
-
-def setup(ip: str | None = None, robot: int | None = None):
-    """Connect to MG400, enable robot, clear errors, and go home.
-
-    Args:
-        ip:    explicit IP address (e.g. "192.168.2.9")
-        robot: robot number 1–4 (overrides ip). Default: Robot 1.
-
-    Returns:
-        (dashboard, move_api) — pass these to moveMG400(), get_joints(),
-        get_pose(), and teardown().
-
-    Example::
-
-        dashboard, move_api = U.setup(robot=1)
-    """
-    target_ip = resolve_target_ip(ip=ip, robot=robot)
-    print(f"[setup] Connecting to MG400 at {target_ip} ...")
-    dashboard, move_api = connect_with_diagnostics(target_ip)
-
-    dashboard.EnableRobot()
-    _time.sleep(1.5)
-    check_errors(dashboard)
-    dashboard.SpeedFactor(SPEED_DEFAULT)
-
-    go_home(move_api)
-    print(f"[setup] Ready. L1={L1:.0f} mm  L2={L2:.0f} mm  Z_base≈{Z_base:.0f} mm")
-    return dashboard, move_api
-
-
-def moveMG400(move_api, q: list) -> None:
-    """Move to body-frame joint configuration q = [q1, q2, q3, q4].
-
-    Each qi is the angle between consecutive links (degrees):
-      q[0]  J1 — base rotation
-      q[1]  J2 — shoulder elevation from horizontal
-      q[2]  J3 — elbow offset FROM the upper-arm direction  (body-frame)
-      q[3]  J4 — wrist offset FROM the forearm direction    (body-frame)
-
-    MG400 firmware conversion (fully absolute):
-      J3_firmware = q2 + q3
-      J4_firmware = q2 + q3 + q4
-
-    Firmware angles are clamped to JOINT_BOUNDS_FW with a warning if changed.
-    Calls JointMovJ() + Sync() to wait for motion completion.
-
-    Args:
-        move_api: DobotApiMove object returned by setup()
-        q:        list [q1, q2, q3, q4] in degrees
-    """
-    if len(q) != 4:
-        raise ValueError(f"q must have 4 elements, got {len(q)}")
-
-    # Convert body-frame → firmware
-    j1, j2, j3, j4 = _rel_to_fw_mg400(q)
-
-    # Print conversion
-    print(f"  [move] body: J1={q[0]:.1f}  J2={q[1]:.1f}  J3={q[2]:.1f}  J4={q[3]:.1f}")
-    print(f"         fw:   J1={j1:.1f}  J2={j2:.1f}  J3={j3:.1f}  J4={j4:.1f}")
-
-    # Clamp firmware angles (warn if adjusted)
-    j1, j2, j3, j4 = _clamp_fw_mg400(j1, j2, j3, j4)
-
-    # Execute and wait
-    move_api.JointMovJ(j1, j2, j3, j4)
-    move_api.Sync()
-
-
-def get_joints(dashboard) -> tuple[float, float, float, float]:
-    """Read current body-frame joint angles from the robot.
-
-    Returns:
-        (q1, q2, q3, q4) in degrees (body-frame):
-          q1 = J1_firmware  (base)
-          q2 = J2_firmware  (shoulder)
-          q3 = J3_firmware - J2_firmware  (elbow body-frame)
-          q4 = J4_firmware - J3_firmware  (wrist body-frame)
-
-    Example::
-
-        q = U.get_joints(dashboard)
-        print(f"Shoulder: {q[1]:.1f}°  Elbow: {q[2]:.1f}°")
-    """
-    j1, j2, j3, j4 = parse_angles(dashboard.GetAngle())
-    return _fw_to_rel_mg400(j1, j2, j3, j4)
-
-
-def get_pose(dashboard) -> tuple[float, float, float, float]:
-    """Read current Cartesian pose from the robot.
-
-    Returns:
-        (x, y, z, r) — position in mm, end-effector rotation in degrees.
-
-    Example::
-
-        x, y, z, r = U.get_pose(dashboard)
-        print(f"X={x:.1f}  Y={y:.1f}  Z={z:.1f}")
-    """
-    return parse_pose(dashboard.GetPose())
-
-
-def move_and_get_feedback(move_api, dashboard, q: list) -> tuple[float, float, float, float]:
-    """Move to body-frame angles, then return the actual Cartesian pose.
-
-    Calls moveMG400(move_api, q), reads the actual end-effector position,
-    and returns it. Students can add FK prediction / error computation
-    in the marked section below.
-
-    Args:
-        move_api:  DobotApiMove object returned by setup()
-        dashboard: DobotApiDashboard object returned by setup()
-        q:         [q1, q2, q3, q4] body-frame angles in degrees
-
-    Returns:
-        (x, y, z, r) — actual Cartesian pose after the move (mm / degrees)
-    """
-    # I/O: move robot to requested joint angles
-    moveMG400(move_api, q)
-
-    # I/O: read actual Cartesian pose after move
-    x, y, z, r = get_pose(dashboard)
-
-    # ------------------------------------------------------------------
-    # TODO: add FK prediction and error computation here
-    #   predicted = fk_predict(q, L1, L2, Z_base)
-    #   error = ...
-    # ------------------------------------------------------------------
-
-    return x, y, z, r
-
-
-def teardown(dashboard, move_api) -> None:
-    """Go home, disable robot, and close TCP connections.
-
-    Always call this (or place it in a finally block).
-
-    Example::
-
-        try:
-            ...
-        finally:
-            U.teardown(dashboard, move_api)
-    """
-    try:
-        go_home(move_api)
-    except Exception:
-        pass
-    try:
-        dashboard.DisableRobot()
-    except Exception:
-        pass
-    close_all(dashboard, move_api)
-    print("[teardown] MG400 connection closed.")

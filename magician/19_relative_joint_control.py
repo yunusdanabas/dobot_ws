@@ -15,13 +15,13 @@ Relative → Absolute conversion (body-frame chain):
   j1_abs = j1_rel
   j2_abs = j2_rel
   j3_abs = j2_rel + j3_rel   (elbow: accumulated from shoulder)
-  j4_abs = j3_abs + j4_rel   (wrist: accumulated from elbow)
+  j4_abs = j4_rel             (wrist: parallel to floor, no accumulation)
 
 Magician parallel linkage quirk — firmware angle mapping:
   j1_fw = j1_rel
   j2_fw = j2_rel
   j3_fw = j3_rel             (firmware J3 IS already a body-frame offset; trivial)
-  j4_fw = j4_abs             (firmware J4 is the absolute wrist angle)
+  j4_fw = j4_rel             (wrist yaw only; end-effector stays parallel to floor)
 
 Commands at the prompt:
   j1 j2 j3 j4   enter relative joint angles (degrees, space-separated)
@@ -59,12 +59,12 @@ L1 = 135.0   # upper arm
 L2 = 147.0   # forearm
 
 # Safe joint-angle bounds — applied to FIRMWARE angles before each move.
-# j1_fw=j1_rel, j2_fw=j2_rel, j3_fw=j3_rel (body-frame), j4_fw=j4_abs.
+# j1_fw=j1_rel, j2_fw=j2_rel, j3_fw=j3_rel (body-frame), j4_fw=j4_rel (wrist yaw).
 JOINT_BOUNDS = {
     "j1": (-90.0,  90.0),
     "j2": (  0.0,  85.0),
     "j3": (-10.0,  85.0),   # j3_rel is the elbow body-frame offset
-    "j4": (-90.0,  90.0),   # j4_fw = j4_abs (absolute wrist angle)
+    "j4": (-90.0,  90.0),   # j4_fw = j4_rel (wrist yaw only)
 }
 
 
@@ -79,27 +79,25 @@ def rel_to_abs_magician(j1_r, j2_r, j3_r, j4_r):
       j1_abs = j1_rel
       j2_abs = j2_rel              (shoulder from horizontal = relative = absolute)
       j3_abs = j2_rel + j3_rel    (elbow from horizontal = sum of two links)
-      j4_abs = j3_abs + j4_rel    (wrist from horizontal = sum of three links)
+      j4_abs = j4_rel             (wrist yaw only; end-effector stays parallel to floor)
 
     Firmware quirk: the Magician firmware's J3 channel already encodes a
     body-frame angle (relative to upper-arm direction), so j3_fw = j3_rel.
-    j4_fw = j4_abs (the absolute wrist angle from horizontal).
+    j4_fw = j4_rel (wrist yaw only; same as body-frame).
 
     Returns:
       fw_tuple  = (j1_fw, j2_fw, j3_fw, j4_fw)     — what move_to() receives
       abs_tuple = (j1_abs, j2_abs, j3_abs, j4_abs)  — absolute angles for display
     """
     j3_abs = j2_r + j3_r
-    j4_abs = j3_abs + j4_r
-    fw_tuple  = (j1_r, j2_r, j3_r,    j4_abs)
-    abs_tuple = (j1_r, j2_r, j3_abs,  j4_abs)
+    fw_tuple  = (j1_r, j2_r, j3_r,   j4_r)
+    abs_tuple = (j1_r, j2_r, j3_abs, j4_r)
     return fw_tuple, abs_tuple
 
 
 def fw_to_rel_magician(j1_fw, j2_fw, j3_fw, j4_fw):
     """Convert firmware angles back to body-frame relative angles (for display)."""
-    j4_rel = j4_fw - (j2_fw + j3_fw)
-    return j1_fw, j2_fw, j3_fw, j4_rel
+    return j1_fw, j2_fw, j3_fw, j4_fw
 
 
 # ---------------------------------------------------------------------------

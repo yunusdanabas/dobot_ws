@@ -181,6 +181,7 @@
   \begin{itemize}
     \item Set up a Python virtual environment for robotic control.
     \item Connect to the Dobot Magician over USB-serial using the GUI.
+    \item Connect to the DOBOT MG400 over Ethernet and verify network setup.
     \item Move individual joints and understand each joint's role and limits.
     \item Observe how joint angles map to the end-effector position using live pose readout.
   \end{itemize}
@@ -190,25 +191,35 @@
 \section{Overview}
 % ──────────────────────────────────────────────────────────────────────────────
 
-This lab introduces the \textbf{Dobot Magician} robotic arm.
-You will set up your development environment, connect to the robot via a
-\textbf{graphical user interface (GUI)}, and explore how joint angles control the arm.
-
-\begin{tcolorbox}[infobox, title={Week 1 Note}]
-MG400 (Ethernet/TCP-IP) exercises are covered in the Week 1 handout (\texttt{lab01}).
-See \texttt{Students/01\_SecondWeek/} for the MG400 student scripts.
-\end{tcolorbox}
+Both the \textbf{Dobot Magician} (USB-serial) and the \textbf{DOBOT MG400} (Ethernet/TCP-IP)
+are covered in this lab. The two software tracks are organized under \texttt{magician/} and \texttt{mg400/} folders
+inside \texttt{Students/00\_IntroductionWeek/}.
 
 \subsection*{Provided Files}
 
-\renewcommand{\arraystretch}{1.5}
+\textbf{Magician (\texttt{magician/}):}
+
+\renewcommand{\arraystretch}{1.4}
 \begin{tabularx}{\linewidth}{@{}lX@{}}
   \toprule
   \textbf{File} & \textbf{Purpose} \\
   \midrule
   \texttt{00\_magician\_gui.py} & GUI application: port discovery, connection, alarm clearing, joint control, live pose readout. \\
-  \texttt{utils.py} & Shared helper functions (safe bounds, port finder, move wrappers). \\
-  \texttt{requirements.txt} & Python dependencies (install with \texttt{pip}). \\
+  \texttt{utils.py}             & Shared helper functions (safe bounds, port finder, move wrappers). \\
+  \texttt{requirements.txt}     & Python dependencies (install with \texttt{pip}). \\
+  \bottomrule
+\end{tabularx}
+
+\vspace{6pt}
+\textbf{MG400 (\texttt{mg400/}):}
+
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+  \toprule
+  \textbf{File} & \textbf{Purpose} \\
+  \midrule
+  \texttt{00\_mg400\_gui.py}  & GUI application: robot selector, TCP connection, error clearing, joint control, live pose readout. \\
+  \texttt{utils\_mg400.py}    & Shared helper functions (safe bounds, TCP connect, move wrappers, error handler). \\
+  \texttt{requirements.txt}   & Python dependencies (install with \texttt{pip}). \\
   \bottomrule
 \end{tabularx}
 
@@ -216,9 +227,21 @@ See \texttt{Students/01\_SecondWeek/} for the MG400 student scripts.
 \section{Quick Start Guide}
 % ──────────────────────────────────────────────────────────────────────────────
 
-\begin{tcolorbox}[setupbox, title={Environment Setup — Python venv}]
+\begin{tcolorbox}[infobox, title={Note: Avoid PDF Copy-Paste for Commands}]
+Type these commands manually or copy from the digital version of this document.
+Some PDF viewers insert extra spaces in folder names
+(e.g.\ \texttt{.\ venv} instead of \texttt{.venv}), which will cause errors.
+\end{tcolorbox}
+
+\subsection*{Magician Setup}
+
+\begin{tcolorbox}[setupbox, title={Magician — Environment Setup}]
+\textbf{Run from:} \texttt{Students/00\_IntroductionWeek/}
+
+\smallskip
 \textbf{Linux:}
 \begin{lstlisting}[style=BashStyle]
+# Run from: Students/00_IntroductionWeek/
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r magician/requirements.txt
@@ -228,6 +251,7 @@ python 00_magician_gui.py
 
 \textbf{Windows (PowerShell):}
 \begin{lstlisting}[style=BashStyle]
+# Run from: Students\00_IntroductionWeek\
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r magician\requirements.txt
@@ -236,10 +260,50 @@ python 00_magician_gui.py
 \end{lstlisting}
 \end{tcolorbox}
 
+\subsection*{MG400 Setup}
+
+\begin{tcolorbox}[setupbox, title={MG400 — Environment Setup}]
+\textbf{Step 1 — Network:}
+\begin{itemize}
+  \item Check the sticker on your assigned MG400 and note its \textbf{Robot Number} and \textbf{IP Address}.
+  \item Set your PC's Ethernet adapter to static IP \texttt{192.168.2.100}, subnet \texttt{255.255.255.0}.
+  \item Verify connectivity by pinging your assigned robot IP from the \textbf{Robot Network Table} (e.g., \texttt{ping 192.168.2.7}).
+\end{itemize}
+
+\smallskip
+\textbf{Step 2 — SDK clone (one-time, run from \texttt{dobot\_ws/} root):}
+\begin{lstlisting}[style=BashStyle]
+git clone https://github.com/Dobot-Arm/TCP-IP-4Axis-Python.git vendor/TCP-IP-4Axis-Python
+\end{lstlisting}
+
+\textbf{Step 3 — Install and run:}
+
+\textbf{Linux:}
+\begin{lstlisting}[style=BashStyle]
+# Run from: Students/00_IntroductionWeek/
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r mg400/requirements.txt
+cd mg400
+python 00_mg400_gui.py
+\end{lstlisting}
+
+\textbf{Windows (PowerShell):}
+\begin{lstlisting}[style=BashStyle]
+# Run from: Students\00_IntroductionWeek\
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r mg400\requirements.txt
+cd mg400
+python 00_mg400_gui.py
+\end{lstlisting}
+\end{tcolorbox}
 
 % ──────────────────────────────────────────────────────────────────────────────
 \section{Hardware Setup}
 % ──────────────────────────────────────────────────────────────────────────────
+
+\subsection*{Dobot Magician}
 
 \begin{enumerate}
   \item \textbf{Surface:} Place on a flat, stable surface. Clear a \qty{40}{\cm} radius around the base.
@@ -255,11 +319,21 @@ python 00_magician_gui.py
   \item \textbf{Yellow/Flashing LED:} Busy (homing or executing a command).
 \end{itemize}
 
+\subsection*{DOBOT MG400}
+
+\begin{enumerate}
+  \item \textbf{Surface:} Place on a flat, stable surface. Clear a \qty{50}{\cm} radius around the base.
+  \item \textbf{Power:} Connect the power adapter and press the power button.
+  \item \textbf{Communication:} Connect an Ethernet cable between the robot and your PC.
+  \item \textbf{Network:} Use the same network settings from \textbf{MG400 Setup, Step 1}.
+        Verify by pinging the IP shown on your robot sticker (see Robot Network Table).
+\end{enumerate}
+
 % ──────────────────────────────────────────────────────────────────────────────
 \section{OS-Specific Notes}
 % ──────────────────────────────────────────────────────────────────────────────
 
-\subsection{Linux}
+\subsection{Linux (Magician only)}
 Users must have permission to access serial devices. Run the following once:
 \begin{lstlisting}[style=BashStyle]
 sudo usermod -a -G dialout $USER
@@ -268,14 +342,13 @@ sudo usermod -a -G dialout $USER
 The Magician typically appears as \texttt{/dev/ttyUSB0} or \texttt{/dev/ttyACM0}.
 
 \subsection{Windows}
-The driver is usually handled by Windows Update. To find the port manually:
+The Magician driver is usually handled by Windows Update. To find the port manually:
 \begin{enumerate}
   \item Open \textbf{Device Manager}.
   \item Expand \textbf{Ports (COM \& LPT)}.
   \item Look for \textbf{Silicon Labs CP210x USB to UART Bridge} (e.g., \texttt{COM3}).
 \end{enumerate}
 The GUI auto-discovers the port, so manual lookup is typically unnecessary.
-
 
 % ──────────────────────────────────────────────────────────────────────────────
 \section{The Dobot Magician}
@@ -291,42 +364,93 @@ The \textbf{Dobot Magician} is a 4-axis desktop robotic arm with:
 
 The arm has two main segments connected by revolute joints:
 \begin{itemize}
-  \item \textbf{Upper arm (L1):} \qty{135}{\mm} — from the shoulder (J2) to the elbow.
-  \item \textbf{Forearm (L2):} \qty{147}{\mm} — from the elbow to the end-effector.
+  \item \textbf{Upper arm (L1):} \qty{135}{\mm} --- from the shoulder (J2) to the elbow.
+  \item \textbf{Forearm (L2):} \qty{147}{\mm} --- from the elbow to the end-effector.
 \end{itemize}
 
 A \textbf{parallel linkage} on J3 keeps the forearm's firmware angle relative to the upper arm (body-frame), rather than world-frame absolute.
 
 \subsection{Coordinate System}
 
-\begin{minipage}[t]{0.45\linewidth}
-\vspace{0pt}
-\begin{tikzpicture}[>={Stealth}, thick]
-  % Grid/Base
-  \fill[gray!10] (0,0) -- (2.4,0) -- (1.6,-0.9) -- (-0.8,-0.9) -- cycle;
-  \draw[gray!30] (0,0) -- (2.4,0) -- (1.6,-0.9) -- (-0.8,-0.9) -- cycle;
+The two diagrams below show the Magician coordinate system from two viewpoints.
 
-  % Axes
-  \draw[->, AxisRed, line width=1.5pt] (0,0) -- (2.4,0) node[right]{\small\textbf{X}};
-  \draw[->, AxisBlue, line width=1.5pt] (0,0) -- (-1.0,-0.75) node[left]{\small\textbf{Y}};
-  \draw[->, AxisGreen, line width=1.5pt] (0,0) -- (0,2.4) node[above, AxisGreen]{\small\textbf{Z}};
+\vspace{8pt}
+\begin{center}
+\begin{tikzpicture}[>={Stealth[length=6pt]}, thick, baseline]
+  % ── Left panel: Top View (XY plane) ─────────────────────────────────
+  \begin{scope}[xshift=0cm]
+    % Robot base circle
+    \filldraw[gray!40] (0,0) circle (0.22cm);
+    \draw[gray!60] (0,0) circle (0.22cm);
 
-  % Origin
-  \filldraw[black] (0,0) circle (2pt);
-  \node[below right, font=\tiny, DimGray] at (0,0) {Base Center};
+    % X axis: points right (forward)
+    \draw[->, AxisRed, line width=1.5pt] (0,0) -- (2.6,0)
+      node[right, font=\small\bfseries, AxisRed] {$+X$};
+    \node[AxisRed, font=\tiny, below right] at (2.6,0) {(forward)};
+
+    % Y axis: points up in the diagram (left of robot)
+    \draw[->, AxisBlue, line width=1.5pt] (0,0) -- (0,2.2)
+      node[above, font=\small\bfseries, AxisBlue] {$+Y$};
+    \node[AxisBlue, font=\tiny, left] at (0,2.2) {(left)};
+
+    % J1 rotation arc hint
+    \draw[gray!60, dashed, ->, thin]
+      (1.2,0) arc[start angle=0, end angle=75, radius=1.2cm];
+    \node[font=\tiny, DimGray] at (0.55,0.9) {J1};
+
+    % Origin label
+    \node[below left, font=\tiny, DimGray] at (0,0) {Base};
+
+    % Caption
+    \node[font=\small\bfseries, MainBlack] at (1.3,-0.7) {Top View (X--Y)};
+  \end{scope}
+
+  % ── Right panel: Side View (XZ plane) ───────────────────────────────
+  \begin{scope}[xshift=5.5cm]
+    % Ground line
+    \draw[gray!50, dashed] (-0.4,0) -- (3.2,0);
+    \node[font=\tiny, DimGray, right] at (3.2,0) {ground};
+
+    % Robot base rectangle
+    \filldraw[gray!30] (-0.18,0) rectangle (0.18,0.28);
+    \draw[gray!60] (-0.18,0) rectangle (0.18,0.28);
+
+    % Two-segment arm silhouette (L1=135 mm, L2=147 mm, scaled)
+    % Shoulder at (0,0.28); elbow at approx 45 deg
+    \draw[gray!70, line width=1pt]
+      (0,0.28) -- (1.35,1.35+0.28);   % upper arm
+    \draw[gray!70, line width=1pt]
+      (1.35,1.35+0.28) -- (2.82,0.28+1.35-0.5);  % forearm (angled down)
+    \filldraw[gray!50] (1.35,1.35+0.28) circle (0.08cm);   % elbow joint
+    \filldraw[gray!50] (2.82,1.13) circle (0.06cm);         % end-effector
+
+    % X axis: points right (reach)
+    \draw[->, AxisRed, line width=1.5pt] (0,0) -- (2.8,0)
+      node[right, font=\small\bfseries, AxisRed] {$+X$};
+    \node[AxisRed, font=\tiny, below right] at (2.8,0) {(reach)};
+
+    % Z axis: points up (height)
+    \draw[->, AxisGreen, line width=1.5pt] (0,0) -- (0,2.4)
+      node[above, font=\small\bfseries, AxisGreen] {$+Z$};
+    \node[AxisGreen, font=\tiny, left] at (0,2.4) {(height)};
+
+    % Origin label
+    \node[below left, font=\tiny, DimGray] at (0,0) {Base};
+
+    % Caption
+    \node[font=\small\bfseries, MainBlack] at (1.4,-0.7) {Side View (X--Z)};
+  \end{scope}
 \end{tikzpicture}
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.50\linewidth}
-\vspace{0pt}
+\end{center}
+
+\vspace{4pt}
 \begin{itemize}
-  \item \textbf{\color{AxisRed}X-axis:} Forward (pointing away from base).
-  \item \textbf{\color{AxisBlue}Y-axis:} Left/Right (Left is positive).
-  \item \textbf{\color{AxisGreen}Z-axis:} Vertical (Up is positive).
+  \item \textbf{\color{AxisRed}X-axis:} Forward (pointing away from the base front face).
+  \item \textbf{\color{AxisBlue}Y-axis:} Left (positive to the robot's left when facing forward).
+  \item \textbf{\color{AxisGreen}Z-axis:} Vertical upward.
   \item \textbf{Units:} Millimeters (\si{\mm}).
   \item \textbf{Rotation (R):} Tool rotation in degrees (\si{\degree}).
 \end{itemize}
-\end{minipage}
 
 \subsection{Joint Definitions and Limits}
 
@@ -336,10 +460,10 @@ Each joint controls a different degree of freedom. The GUI enforces these limits
   \toprule
   \textbf{Joint} & \textbf{Motion} & \textbf{Safe Range} & \textbf{Units} \\
   \midrule
-  J1 & Base Rotation & \qtyrange{-90}{90}{\degree} & deg \\
-  J2 & Rear Arm Elevation & \qtyrange{0}{85}{\degree} & deg \\
-  J3 & Forearm Elevation & \qtyrange{-10}{85}{\degree} & deg \\
-  J4 & End-Effector Rotation & \qtyrange{-90}{90}{\degree} & deg \\
+  J1 & Base Rotation          & \qtyrange{-90}{90}{\degree}   & deg \\
+  J2 & Rear Arm Elevation     & \qtyrange{0}{85}{\degree}     & deg \\
+  J3 & Forearm Elevation      & \qtyrange{-10}{85}{\degree}   & deg \\
+  J4 & End-Effector Rotation  & \qtyrange{-90}{90}{\degree}   & deg \\
   \bottomrule
 \end{tabularx}
 
@@ -349,20 +473,88 @@ Each joint controls a different degree of freedom. The GUI enforces these limits
   \toprule
   \textbf{Cartesian Dimension} & \textbf{Safe Operating Range} & \textbf{Unit} \\
   \midrule
-  X (Reach) & \qtyrange{120}{315}{\mm} & mm \\
-  Y (Slew)  & $\pm$\qty{158}{\mm} & mm \\
-  Z (Height) & \qtyrange{5}{155}{\mm} & mm \\
+  X (Reach)  & \qtyrange{120}{315}{\mm} & mm \\
+  Y (Slew)   & $\pm$\qty{158}{\mm}      & mm \\
+  Z (Height) & \qtyrange{5}{155}{\mm}   & mm \\
   \bottomrule
 \end{tabularx}
 
+% ──────────────────────────────────────────────────────────────────────────────
+\section{The DOBOT MG400}
+% ──────────────────────────────────────────────────────────────────────────────
 
+The \textbf{DOBOT MG400} is a 4-axis collaborative robotic arm designed for flexible benchtop use:
+\begin{itemize}
+  \item \textbf{Reach:} \qty{440}{\mm} maximum.
+  \item \textbf{Payload:} \qty{500}{\g}.
+  \item \textbf{Repeatability:} $\pm$\qty{0.02}{\mm}.
+  \item \textbf{Communication:} Ethernet/TCP-IP (three ports: dashboard, motion, feedback).
+\end{itemize}
+
+Key differences from the Magician: larger reach, and \textbf{Z cannot be negative} — the origin
+(Z = 0) is the robot's mounting surface. Always keep Z $\geq$ \qty{5}{\mm} to avoid collision.
+
+\subsection{Coordinate Bounds}
+
+\begin{tabularx}{\linewidth}{@{}llXl@{}}
+  \toprule
+  \textbf{Axis} & \textbf{Safe Range} & \textbf{Notes} & \textbf{Unit} \\
+  \midrule
+  X & 60 -- 400   & Inner $\approx$\qty{60}{\mm} (base singularity); max reach \qty{440}{\mm} & mm \\
+  Y & $\pm$220    & Symmetric lateral sweep & mm \\
+  Z & 5 -- 140    & \textbf{Cannot go negative} — 0 = mounting surface & mm \\
+  R & $\pm$170    & End-effector rotation & deg \\
+  \bottomrule
+\end{tabularx}
+
+\subsection{Joint Limits}
+
+\begin{tabularx}{\linewidth}{@{}llXl@{}}
+  \toprule
+  \textbf{Joint} & \textbf{Motion} & \textbf{Safe Range} & \textbf{Notes} \\
+  \midrule
+  J1 & Base Rotation      & $\pm$\qty{160}{\degree}               & \\
+  J2 & Shoulder Elevation & \qtyrange{-25}{85}{\degree}           & \\
+  J3 & Elbow              & \qtyrange{-25}{105}{\degree}          & Firmware absolute = J2 + J3\_body \\
+  J4 & Wrist Rotation     & $\pm$\qty{180}{\degree}               & \\
+  \bottomrule
+\end{tabularx}
+
+\subsection{Robot Network Table}
+
+\begin{tabularx}{\linewidth}{@{}llX@{}}
+  \toprule
+  \textbf{Robot Number} & \textbf{IP Address} & \textbf{Notes} \\
+  \midrule
+  Robot 1 & 192.168.2.7  & Match with sticker on the robot \\
+  Robot 2 & 192.168.2.10 & Match with sticker on the robot \\
+  Robot 3 & 192.168.2.9  & Match with sticker on the robot \\
+  Robot 4 & 192.168.2.6  & Match with sticker on the robot \\
+  \bottomrule
+\end{tabularx}
+
+\subsection{Using the MG400 GUI}
+
+\begin{enumerate}
+  \item \textbf{Launch:} \texttt{cd mg400 \&\& python 00\_mg400\_gui.py}
+  \item \textbf{Connect:} Select the robot number that matches the sticker on your assigned arm
+        (Robot 1--4), then click
+        \textbf{Connect}. The GUI enables the robot and moves to READY\_POSE automatically.
+  \item \textbf{Move Joints:} Use the spinboxes and \textbf{+/$-$} buttons to set target
+        joint angles, then click \textbf{Move} for one joint, or \textbf{Send All} for all four.
+  \item \textbf{Live Pose:} The right panel shows current X/Y/Z/R and J1--J4, updated every
+        \qty{500}{\ms}.
+  \item \textbf{Joint Limits:} The limits panel shows the safe range for each joint.
+  \item \textbf{Home:} Returns to READY\_POSE (300, 0, 50, 0) mm.
+  \item \textbf{ESTOP:} Sends EmergencyStop immediately and disconnects.
+\end{enumerate}
 
 % ──────────────────────────────────────────────────────────────────────────────
-\section{Using the GUI}
+\section{Using the Magician GUI}
 % ──────────────────────────────────────────────────────────────────────────────
 
 \begin{enumerate}
-  \item \textbf{Launch:} \texttt{python 00\_magician\_gui.py}
+  \item \textbf{Launch:} \texttt{cd magician \&\& python 00\_magician\_gui.py}
   \item \textbf{Connect:} Select the port (auto-discovered with a star marker) and click \textbf{Connect}. The GUI clears any alarms and homes the robot automatically.
   \item \textbf{Move Joints:} Use the spinboxes and \textbf{+/$-$} buttons to set a target angle, then click \textbf{Move} for that joint, or \textbf{Send All} to move all four joints at once.
   \item \textbf{Live Pose:} The right panel shows the current X, Y, Z, R and J1--J4 values, updated every \qty{500}{\ms}.
@@ -375,16 +567,32 @@ Each joint controls a different degree of freedom. The GUI enforces these limits
 \section{Troubleshooting}
 % ──────────────────────────────────────────────────────────────────────────────
 
-\begin{tcolorbox}[infobox, title={Common Connection Issues}]
+\begin{tcolorbox}[infobox, title={Common Magician Connection Issues}]
 \rowcolors{2}{white}{ToneBlueBg}
 \begin{tabularx}{\linewidth}{@{}lX@{}}
   \toprule
   \textbf{Symptom} & \textbf{Recommended Action} \\
   \midrule
-  \texttt{Access Denied} & Ensure \textbf{DobotStudio} and other Python scripts are closed. \\
+  \texttt{Access Denied}    & Ensure \textbf{DobotStudio} and other Python scripts are closed. \\
   \texttt{Device not found} & Verify both USB and Power cables. Click \textbf{Refresh} in the GUI to refresh ports. \\
-  Motors don't move & Check the \qty{12}{\V} supply. If LED is red, click \textbf{Clear Alarms} in the GUI. \\
-  Erratic movement & Reset to neutral posture and power cycle the robot. \\
+  Motors don't move         & Check the \qty{12}{\V} supply. If LED is red, click \textbf{Clear Alarms} in the GUI. \\
+  Erratic movement          & Reset to neutral posture and power cycle the robot. \\
+  \bottomrule
+\end{tabularx}
+\end{tcolorbox}
+
+\vspace{6pt}
+
+\begin{tcolorbox}[infobox, title={MG400 Connection Issues}]
+\rowcolors{2}{white}{ToneBlueBg}
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+  \toprule
+  \textbf{Symptom} & \textbf{Recommended Action} \\
+  \midrule
+  \texttt{Connection refused}     & Check static IP (\texttt{192.168.2.100}), ping your assigned robot IP from the Robot Network Table, and verify the Ethernet cable. \\
+  \texttt{dobot\_api not found}   & Clone the SDK at the \texttt{dobot\_ws/} root (see Quick Start, Step 2). \\
+  Robot doesn't move after connect & GUI enables automatically; click \textbf{Clear Errors} if the status badge shows ERROR. \\
+  Wrong robot moves               & Verify the sticker robot number/IP and select the matching robot in the dropdown before clicking Connect. \\
   \bottomrule
 \end{tabularx}
 \end{tcolorbox}
@@ -396,9 +604,10 @@ Each joint controls a different degree of freedom. The GUI enforces these limits
 
 \begin{tcolorbox}[safetybox, title={Mandatory Safety Rules}]
 \begin{enumerate}
-  \item \textbf{Workspace:} Maintain a clean area. No cables in the reach zone (\qty{40}{\cm} radius around the base).
+  \item \textbf{Workspace:} Maintain a clean area. No cables in the reach zone (\qty{40}{\cm} radius for Magician, \qty{50}{\cm} for MG400).
   \item \textbf{Initialization:} Always let the GUI complete its connection sequence (alarm clear + homing) before sending commands.
   \item \textbf{Joint Limits:} The GUI clamps all values to the safe ranges shown in the Joint Limits panel.
+  \item \textbf{MG400 Reach:} The MG400 arm extends to \qty{440}{\mm} — maintain a \qty{50}{\cm} clear radius around the base.
   \item \textbf{Supervision:} Stay within reach of the power cable at all times.
 \end{enumerate}
 \end{tcolorbox}

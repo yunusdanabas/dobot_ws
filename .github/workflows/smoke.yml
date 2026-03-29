@@ -42,7 +42,6 @@ jobs:
         run: |
           python magician/07_keyboard_teleop.py --help
           python mg400/07_keyboard_teleop.py --help
-          python mg400/slider/04_slider_teleop.py --help
           python mg400/00_connectivity_check.py --help
 
       - name: Run student script smoke checks
@@ -51,7 +50,6 @@ jobs:
           cd Students/01_SecondWeek/mg400 && python 01_init_check.py --help && cd ../../..
           cd Students/01_SecondWeek/mg400 && python 02_joint_control.py --help && cd ../../..
           cd Students/01_SecondWeek/mg400 && python 03_relative_joint_control.py --help && cd ../../..
-          cd Students/01_SecondWeek/mg400 && python 04_slider_intro.py --help && cd ../../..
 
   smoke-windows:
     runs-on: windows-latest
@@ -90,7 +88,6 @@ jobs:
         run: |
           python magician/07_keyboard_teleop.py --help
           python mg400/07_keyboard_teleop.py --help
-          python mg400/slider/04_slider_teleop.py --help
           python mg400/00_connectivity_check.py --help
 
       - name: Run student script smoke checks
@@ -100,5 +97,4 @@ jobs:
           python 01_init_check.py --help
           python 02_joint_control.py --help
           python 03_relative_joint_control.py --help
-          python 04_slider_intro.py --help
           Pop-Location

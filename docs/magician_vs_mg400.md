@@ -5,8 +5,8 @@ This document explains the structural and API-level differences between the Magi
 looks different depending on which robot you are using.
 
 It compares the full root tracks. The intro-week copies under
-`Students/00_IntroductionWeek/` are trimmed teaching versions and omit some
-advanced options such as visualization flags, CSV logging, and feedback helpers.
+`Students/00_IntroductionWeek/` are trimmed teaching versions (GUI-only for Week 0)
+and omit advanced options such as visualization flags, CSV logging, and feedback helpers.
 
 ---
 

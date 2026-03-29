@@ -1,0 +1,14 @@
+# mg400/requirements.txt — dependencies for MG400 intro GUI
+#
+# Install with:
+#   pip install -r requirements.txt
+#
+# numpy — required by dobot_api.py (binary feedback packet parsing)
+# PyQt5 — GUI framework for 00_mg400_gui.py
+#
+# Note: dobot_api.py must be available via the SDK git clone:
+#   cd dobot_ws
+#   git clone https://github.com/Dobot-Arm/TCP-IP-4Axis-Python.git vendor/TCP-IP-4Axis-Python
+
+numpy>=1.26,<3
+PyQt5

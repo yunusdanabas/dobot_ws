@@ -1,0 +1,6 @@
+# requirements.txt — Dobot Magician, Lab 01 (Week 2)
+# Install from Students/01_SecondWeek/ with:
+#   pip install -r magician/requirements.txt
+pydobotplus==0.1.2
+pyserial==3.4
+numpy>=1.26,<3

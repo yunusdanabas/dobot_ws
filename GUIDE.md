@@ -6,7 +6,7 @@ Part 2 covers implementation details for TAs and anyone extending the code.
 
 This guide covers the full-featured root tracks in [`magician/`](./magician/) and
 [`mg400/`](./mg400/). Simplified student copies live in
-[`Students/00_IntroductionWeek/`](./Students/00_IntroductionWeek/README.md) (Week 0 — Magician) and
+[`Students/00_IntroductionWeek/`](./Students/00_IntroductionWeek/README.md) (Week 0 — Magician + MG400) and
 [`Students/01_SecondWeek/`](./Students/01_SecondWeek/README.md) (Week 1 — MG400).
 For the native Windows workspace setup and MG400 adapter configuration, use
 [`windows/README.md`](./windows/README.md).
@@ -848,8 +848,7 @@ mg400/                    ← MG400 parallel workspace (TCP/IP, 440 mm reach)
 ├── 14_joint_control.py   ← Interactive J1–J4 REPL with FK preview
 ├── 15_multi_joint_control.py ← Broadcast joint commands to multiple robots
 ├── 16_relative_joint_control.py ← Relative-angle REPL with conversion chain
-├── 17_joint_control_gui.py ← PyQt5 GUI for absolute/relative/cartesian control
-└── slider/               ← MG400 sliding rail scripts and helpers
+└── 17_joint_control_gui.py ← PyQt5 GUI for absolute/relative/cartesian control
 
 vendor/
 ├── dobot-python/         ← Track B SDK (Magician, for magician/10_circle_queue.py)
@@ -1025,7 +1024,7 @@ or `python NN_description.py --no-viz`.
 ### Dobot Magician (USB-serial)
 
 - [`README.md`](./README.md) — workspace landing page and quick navigation
-- [`Students/00_IntroductionWeek/README.md`](./Students/00_IntroductionWeek/README.md) — Week 0 student index (Magician)
+- [`Students/00_IntroductionWeek/README.md`](./Students/00_IntroductionWeek/README.md) — Week 0 student index (Magician + MG400)
 - [`Students/01_SecondWeek/README.md`](./Students/01_SecondWeek/README.md) — Week 1 student index (MG400)
 - [`requirements.txt`](./requirements.txt) — pip dependencies (pydobotplus, pydobot, pyserial, pyqtgraph, PyQt5, numpy)
 - [`docs/control_map.md`](./docs/control_map.md) — hardware specs, library syntax, safety, motion modes
@@ -1045,6 +1044,6 @@ or `python NN_description.py --no-viz`.
 - [`mg400/utils_mg400.py`](./mg400/utils_mg400.py) — MG400 equivalents of `utils.py`: `connect()`, `safe_move()`, `parse_pose()`, `check_errors()`, constants
 - [`mg400/viz_mg400.py`](./mg400/viz_mg400.py) — `RobotViz` adapted for MG400 workspace bounds; same 3-line integration pattern
 - [`vendor/TCP-IP-4Axis-Python/`](./vendor/TCP-IP-4Axis-Python/) — Dobot official MG400 SDK (`dobot_api.py`, `MyType` numpy dtype for port 30004)
-- [`mg400/MG400_info.md`](./mg400/MG400_info.md) — MG400 network setup, script index, and sliding rail notes
+- [`mg400/MG400_info.md`](./mg400/MG400_info.md) — MG400 network setup, script index, and reference data
 - [`windows/README.md`](./windows/README.md) — Windows adapter setup, PowerShell commands, and troubleshooting
 - [`docs/magician_vs_mg400.md`](./docs/magician_vs_mg400.md) — code-level comparison between the Magician and MG400 tracks

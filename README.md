@@ -17,8 +17,8 @@ Supports two robots:
 
 - Ubuntu 24 / Linux: native support for all scripts. Dobot Magician additionally needs the `dialout` permission step.
 - Windows 10/11: native PowerShell workflow lives in [`windows/README.md`](./windows/README.md).
-- Student Week 0 (Magician): [`Students/00_IntroductionWeek/README.md`](./Students/00_IntroductionWeek/README.md). Week 1 (MG400): [`Students/01_SecondWeek/README.md`](./Students/01_SecondWeek/README.md).
-- Canonical keyboard teleop entrypoints are cross-platform: `magician/07_keyboard_teleop.py`, `mg400/07_keyboard_teleop.py`, and `mg400/slider/04_slider_teleop.py`.
+- Student Week 0 (Magician + MG400): [`Students/00_IntroductionWeek/README.md`](./Students/00_IntroductionWeek/README.md). Week 1 (MG400 advanced): [`Students/01_SecondWeek/README.md`](./Students/01_SecondWeek/README.md).
+- Canonical keyboard teleop entrypoints are cross-platform: `magician/07_keyboard_teleop.py` and `mg400/07_keyboard_teleop.py`.
 
 ## Repo Layout
 
@@ -26,7 +26,7 @@ Supports two robots:
 |---|---|
 | `magician/` | Dobot Magician scripts 01-19 + shared helpers (`utils.py`, `viz.py`) |
 | `mg400/` | MG400 scripts 01-17 + shared helpers (`utils_mg400.py`, `viz_mg400.py`) |
-| `Students/` | Intro-week subsets: Week 0 (Magician) and Week 1 (MG400), plus report materials |
+| `Students/` | Intro-week subsets: Week 0 (Magician + MG400) and Week 1 (MG400 advanced), plus report materials |
 | `docs/` | Reference docs: motion modes, platform differences, robot comparisons, control map |
 | `windows/` | Windows-only docs, PowerShell scripts, and lazy-imported helper modules |
 | `vendor/` | External SDK trees (auto-discovered by scripts) |
@@ -39,7 +39,7 @@ Supports two robots:
 - Platform differences: [`docs/platform_differences.md`](./docs/platform_differences.md)
 - Control stack map: [`docs/control_map.md`](./docs/control_map.md)
 - Docs index: [`docs/README.md`](./docs/README.md)
-- Student Week 0 (Magician): [`Students/00_IntroductionWeek/README.md`](./Students/00_IntroductionWeek/README.md)
+- Student Week 0 (Magician + MG400): [`Students/00_IntroductionWeek/README.md`](./Students/00_IntroductionWeek/README.md)
 - Student Week 1 (MG400): [`Students/01_SecondWeek/README.md`](./Students/01_SecondWeek/README.md)
 
 ## Notes

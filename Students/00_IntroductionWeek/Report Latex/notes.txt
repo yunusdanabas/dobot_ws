@@ -1,0 +1,26 @@
+Move to komutu ayarla
+
+set joints komutu
+
+serial link manip olarak
+
+kendi hesapları vs robotun hesapları eşleşiyor mu?
+
+workspace --> point cloud 
+
+flip lab
+
+base code:
+ importlar
+ set joints
+ home götüren code
+
+ sadece bunları kullan
+
+
+WEEKS
+FK --> Bu hafta
+IK --> 6 - 10 nisan
+Path planning --> nisan 13 17
+
+---
