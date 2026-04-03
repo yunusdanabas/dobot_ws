@@ -1,0 +1,5 @@
+pydobotplus
+pyserial
+numpy
+scipy
+matplotlib

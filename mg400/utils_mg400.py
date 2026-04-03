@@ -136,6 +136,20 @@ ROBOT_MODE = {
     11: "JOG",
 }
 
+# Common MG400 controller alarm codes (from alarm_controller.json).
+# Covers the errors most likely encountered in a lab setting.
+MG400_ALARM = {
+    85: ("E-stop triggered",
+         "Release the hardware E-stop button (twist to unlock), "
+         "then run the script again. No power-cycle needed."),
+    1:  ("Joint 1 overload", "Check for obstruction and power-cycle the robot."),
+    2:  ("Joint 2 overload", "Check for obstruction and power-cycle the robot."),
+    3:  ("Joint 3 overload", "Check for obstruction and power-cycle the robot."),
+    4:  ("Joint 4 overload", "Check for obstruction and power-cycle the robot."),
+    11: ("Joint 1 positive soft-limit", "Move joint back inside limits."),
+    12: ("Joint 1 negative soft-limit", "Move joint back inside limits."),
+}
+
 # ---------------------------------------------------------------------------
 # Shared feedback state (updated by start_feedback_thread)
 # ---------------------------------------------------------------------------
@@ -492,16 +506,21 @@ def check_errors(dashboard) -> None:
         resp = dashboard.GetErrorID()
         error_ids = parse_error_ids(resp)
         if error_ids:
-            print(f"[check_errors] Active error IDs: {error_ids}")
+            for eid in error_ids:
+                name, fix = MG400_ALARM.get(eid, ("Unknown alarm", "Power-cycle the robot."))
+                print(f"[check_errors] Error {eid}: {name}")
+                print(f"               Fix: {fix}")
             dashboard.ClearError()
             cont_resp = dashboard.Continue()
             # A -1 return code means the command was rejected (robot still in ERROR)
             if not cont_resp or cont_resp.strip().startswith("-1"):
+                descriptions = "; ".join(
+                    MG400_ALARM.get(e, ("Unknown alarm", ""))[0] for e in error_ids
+                )
                 raise RuntimeError(
-                    f"[check_errors] Cannot clear robot errors {error_ids}.\n"
+                    f"[check_errors] Cannot clear robot errors {error_ids} ({descriptions}).\n"
                     "  Robot is still in ERROR mode — do not proceed.\n"
-                    "  Required action: check E-stop, collision guards, and joint limits,\n"
-                    "  then power-cycle the robot (hold power button ~3 s)."
+                    "  See fix instructions printed above."
                 )
             print("[check_errors] Errors cleared, robot resumed.")
         else:

@@ -1,0 +1,242 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[top=2.5cm,bottom=2.5cm,left=2.5cm,right=2.5cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage[most]{tcolorbox}
+
+% ── Code style ────────────────────────────────────────────────────────────────
+\lstdefinestyle{code}{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{gray!10},
+  frame=single,
+  breaklines=true,
+  tabsize=4,
+  showstringspaces=false,
+}
+
+% ── Coloured boxes ────────────────────────────────────────────────────────────
+\tcbset{
+  basebox/.style={
+    enhanced, breakable, sharp corners,
+    boxrule=0pt, leftrule=3pt,
+    left=10pt, right=10pt, top=8pt, bottom=8pt,
+    fonttitle=\bfseries\small,
+    attach title to upper,
+    after title={\par\smallskip\hrule\smallskip},
+  },
+  setupbox/.style={basebox, colback=gray!8,  colframe=black!60, coltitle=black!80},
+  infobox/.style ={basebox, colback=blue!5,  colframe=blue!50!black, coltitle=blue!50!black},
+  notebox/.style ={basebox, colback=yellow!8, colframe=orange!70!black, coltitle=orange!70!black},
+}
+
+\setlength{\parskip}{6pt}
+\setlength{\parindent}{0pt}
+
+% ──────────────────────────────────────────────────────────────────────────────
+\begin{document}
+
+\begin{center}
+  {\Large\bfseries ME403 --- Lab 1: Warming up to the Robot!}\\[4pt]
+  {\normalsize Sabanci University, Spring 2025-26 \quad|\quad Due: April 8--9}
+\end{center}
+
+\rule{\linewidth}{0.8pt}
+
+Please complete the following tasks on a robot of your choice (Dobot Magician or MG400).
+
+% ── Assignment ────────────────────────────────────────────────────────────────
+\section*{Assignment}
+
+\textbf{Task 1.} Derive the formulation of the end-effector position in the robot's frame by
+using homogeneous transformation matrices of the links. Then, please write a function that
+utilizes these matrices to estimate the tip position. All the required dimensions such as link
+lengths and relative axis locations can be obtained by simply measuring them at one of the
+robots, or by referring to the robot manual, which can be found online. This part of your code
+should estimate where the robot's tip would end up in the Cartesian space when it is at a
+certain configuration (i.e.\ for certain joint angles).
+
+\textbf{Task 2.} Instruct the robot to move to 20 random different configurations within its
+workspace. At each configuration collect the position feedback provided by the robot and store
+that data in an array. Compare those feedback values against your code's estimation. If your
+forward kinematics model is alright, your estimation and the values returned from the robot
+should have a very good match. If you see significant errors, please review your kinematic
+model. Show the agreement between measured and estimated position values by plotting the
+magnitude of the difference between them.
+
+Let $e = p - p_m$, where $p = [x\ y\ z]^T$ is the estimated position and
+$p_m = [x_m\ y_m\ z_m]^T$ is the position provided by the robot. Please present the magnitude
+of the error in those 20 configuration samples with a box plot.
+
+\textbf{Task 3.} Write a function that obtains the Jacobian of the end-effector and outputs the
+matrix to the terminal window. This function should get the current configuration as input and
+provide the matrix at will.
+
+\rule{\linewidth}{0.4pt}
+
+% ── Due date ──────────────────────────────────────────────────────────────────
+\section*{Due Date \& Deliverables}
+
+\textbf{Due Date:} Lab sessions on April 8--9.
+
+\textbf{Deliverables:} Please complete these steps on your own by the time of your lab session.
+A brief report will be requested after the lab session. An assignment for that post-lab document
+will be announced later.
+
+\rule{\linewidth}{0.4pt}
+
+% ── Provided files ────────────────────────────────────────────────────────────
+\section*{Provided Files}
+
+\begin{tabular}{ll}
+  \texttt{utils.py}         & Robot connection and motion helpers. \\
+  \texttt{interface.py}     & Terminal interface to jog the robot and run your code. \\
+  \texttt{myCode.py}        & \textbf{Write your code here} (inside \texttt{run()}). \\
+  \texttt{requirements.txt} & Python dependencies. \\
+\end{tabular}
+
+% ── Quick start ───────────────────────────────────────────────────────────────
+\section*{Quick Start --- If You Attended Lab 0}
+
+Your virtual environment is already set up. Re-activate it and install the requirements.
+ \textbf{Do this at the start of every lab}, as we may update the packages between sessions.
+
+\begin{tcolorbox}[setupbox, title={Linux / macOS}]
+\begin{lstlisting}[style=code]
+# From Students/01_SecondWeek/
+source .venv/bin/activate
+pip install -r requirements.txt
+\end{lstlisting}
+\end{tcolorbox}
+
+\begin{tcolorbox}[setupbox, title={Windows (PowerShell)}]
+\begin{lstlisting}[style=code]
+# From Students\01_SecondWeek\
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+\end{lstlisting}
+\end{tcolorbox}
+
+% ── Robot selection ───────────────────────────────────────────────────────────
+\section*{Select Your Robot}
+
+Open \texttt{utils.py} and set the robot type at the top before running anything:
+
+\begin{lstlisting}[style=code]
+ROBOT_TYPE = "magician"     # or "mg400"
+MG400_IP   = "192.168.2.x"  # change to your assigned robot's IP (MG400 only)
+\end{lstlisting}
+
+\begin{tcolorbox}[infobox, title={If you are using the Dobot Magician}]
+Check the \textbf{``Working with Dobot Magician''} file on Sucourse before working
+with the Magician.
+\end{tcolorbox}
+
+% ── How to run ────────────────────────────────────────────────────────────────
+\section*{How to Run}
+
+\begin{lstlisting}[style=code]
+python interface.py
+\end{lstlisting}
+
+At the prompt:
+\begin{itemize}[nosep]
+  \item \texttt{move q1 q2 q3 q4} --- jog the robot to the given joint angles
+  \item \texttt{x} --- execute your \texttt{run()} function in \texttt{myCode.py}
+  \item \texttt{q} --- quit and close the connection
+\end{itemize}
+
+% ── First-time setup (missed Lab 0) ───────────────────────────────────────────
+\newpage
+\rule{\linewidth}{1pt}
+\begin{center}
+  {\large\bfseries First-Time Setup --- If You Did Not Attend Lab 0}
+\end{center}
+\rule{\linewidth}{1pt}
+
+\begin{tcolorbox}[notebox, title={Note: Avoid PDF Copy-Paste for Commands}]
+Type commands manually or copy from the digital version. Some PDF viewers insert
+extra spaces in folder paths (e.g.\ \texttt{.\ venv} instead of \texttt{.venv}).
+\end{tcolorbox}
+
+\subsection*{1 --- Virtual Environment}
+
+\begin{tcolorbox}[setupbox, title={Linux / macOS}]
+\begin{lstlisting}[style=code]
+# From Students/01_SecondWeek/
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+\end{lstlisting}
+\end{tcolorbox}
+
+\begin{tcolorbox}[setupbox, title={Windows (PowerShell)}]
+\begin{lstlisting}[style=code]
+# From Students\01_SecondWeek\
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+\end{lstlisting}
+\end{tcolorbox}
+
+\subsection*{2 --- Dobot Magician (USB/Serial)}
+
+The Magician connects over USB via a CP210x Silicon Labs chip at 115\,200 baud.
+\texttt{pydobotplus} handles the serial protocol; the firmware runs on the robot's
+internal controller. Close DobotStudio / DobotDemo before running any Python script
+--- only one process can hold the serial port at a time.
+
+\textit{Linux only} --- grant port access once per machine, then log out and back in:
+\begin{lstlisting}[style=code]
+sudo usermod -a -G dialout $USER
+ls /dev/ttyUSB*    # verify: should show /dev/ttyUSB0
+\end{lstlisting}
+
+\textit{Windows} --- the CP210x driver installs automatically in most cases. If not,
+download it from Silicon Labs. The port shows up as \texttt{COM3} (or similar) in
+Device Manager under \textit{Ports (COM \& LPT)}.
+
+\subsection*{3 --- DOBOT MG400 (Ethernet/TCP-IP)}
+
+The MG400 does not use serial; it communicates over Ethernet via three TCP ports:
+
+\begin{tabular}{lll}
+  Port 29999 & Dashboard & Enable/disable, error query, pose and angle readout \\
+  Port 30003 & Move API  & MovJ, MovL, Arc, RelMovJ, Sync, \ldots \\
+  Port 30004 & Feedback  & 1440-byte packets every 8\,ms (live robot state) \\
+\end{tabular}
+
+\vspace{6pt}
+
+\textit{Network} --- set your PC's Ethernet adapter to static IP \texttt{192.168.2.100},
+netmask \texttt{255.255.255.0}, then ping your assigned robot:
+\begin{lstlisting}[style=code]
+ping 192.168.2.7    # Robot 1 -- replace with your assigned robot's IP
+\end{lstlisting}
+
+\textit{Robot IP addresses:}
+
+\begin{tabular}{ll}
+  Robot 1 & \texttt{192.168.2.7}  \\
+  Robot 2 & \texttt{192.168.2.10} \\
+  Robot 3 & \texttt{192.168.2.9}  \\
+  Robot 4 & \texttt{192.168.2.6}  \\
+\end{tabular}
+
+\vspace{6pt}
+
+\textit{SDK} --- the MG400 requires Dobot's Python SDK, which is not on PyPI.
+Clone it once from the \texttt{dobot\_ws/} root:
+\begin{lstlisting}[style=code]
+git clone https://github.com/Dobot-Arm/TCP-IP-4Axis-Python.git \
+    vendor/TCP-IP-4Axis-Python
+\end{lstlisting}
+
+\texttt{utils\_mg400.py} picks up \texttt{dobot\_api.py} from \texttt{vendor/}
+automatically --- no further configuration needed.
+
+\end{document}
